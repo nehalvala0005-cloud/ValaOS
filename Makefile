@@ -1,0 +1,30 @@
+all: build/kernel.bin
+
+build/boot.o: kernel/boot.asm
+	nasm -f elf32 kernel/boot.asm -o build/boot.o
+
+build/kernel.o: kernel/kernel.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/kernel.c -o build/kernel.o
+
+build/keyboard.o: kernel/keyboard.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/keyboard.c -o build/keyboard.o
+
+build/memory.o: kernel/memory.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/memory.c -o build/memory.o
+
+build/task.o: kernel/task.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/task.c -o build/task.o
+
+build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o linker.ld
+		ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o
+iso: build/kernel.bin
+	mkdir -p build/isodir/boot/grub
+	cp build/kernel.bin build/isodir/boot/kernel.bin
+	cp boot/grub/grub.cfg build/isodir/boot/grub/grub.cfg
+	grub-mkrescue -o build/ValaOS.iso build/isodir
+
+run: iso
+	qemu-system-i386 -cdrom build/ValaOS.iso -boot d
+
+clean:
+	rm -rf build/*
