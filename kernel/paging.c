@@ -8,13 +8,18 @@ typedef unsigned int uint32_t;
 #define PAGE_WRITABLE 0x002
 #define PAGE_USER 0x004
 
-static uint32_t page_directory[1024] __attribute__((aligned(4096)));
-static uint32_t page_tables[INITIAL_PAGE_TABLES][1024] __attribute__((aligned(4096)));
-static uint32_t dynamic_tables[MAX_DYNAMIC_TABLES][1024] __attribute__((aligned(4096)));
+static uint32_t page_directory[1024]
+    __attribute__((aligned(4096)));
+
+static uint32_t page_tables[INITIAL_PAGE_TABLES][1024]
+    __attribute__((aligned(4096)));
+
+static uint32_t dynamic_tables[MAX_DYNAMIC_TABLES][1024]
+    __attribute__((aligned(4096)));
 
 static int dynamic_table_used[MAX_DYNAMIC_TABLES];
 
-static void invalidate_page(uint32_t virtual_address) {
+static void invalidate_page(uint32_t *virtual_address) {
     __asm__ volatile (
         "invlpg (%0)"
         :
@@ -98,19 +103,23 @@ int paging_enabled() {
     return (cr0 & 0x80000000) != 0;
 }
 
-int map_page_flags(uint32_t virtual_address, uint32_t physical_address, uint32_t flags) {
+int map_page_flags(
+    uint32_t *virtual_address,
+    uint32_t *physical_address,
+    uint32_t flags
+) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
 
-    if (virtual_address % PAGE_SIZE != 0)
+    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
 
-    if (physical_address % PAGE_SIZE != 0)
+    if ((uint32_t)physical_address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
@@ -127,13 +136,17 @@ int map_page_flags(uint32_t virtual_address, uint32_t physical_address, uint32_t
             PAGE_WRITABLE;
     }
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    if (flags & PAGE_USER)
+        page_directory[directory_index] |= PAGE_USER;
+
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     flags &= 0xFFF;
     flags |= PAGE_PRESENT;
 
     table[table_index] =
-        (physical_address & 0xFFFFF000) |
+        ((uint32_t)physical_address & 0xFFFFF000) |
         flags;
 
     invalidate_page(virtual_address);
@@ -141,7 +154,10 @@ int map_page_flags(uint32_t virtual_address, uint32_t physical_address, uint32_t
     return 1;
 }
 
-int map_page(uint32_t virtual_address, uint32_t physical_address) {
+int map_page(
+    uint32_t *virtual_address,
+    uint32_t *physical_address
+) {
     return map_page_flags(
         virtual_address,
         physical_address,
@@ -149,16 +165,16 @@ int map_page(uint32_t virtual_address, uint32_t physical_address) {
     );
 }
 
-int unmap_page(uint32_t virtual_address) {
+int unmap_page(uint32_t *virtual_address) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
 
-    if (virtual_address % PAGE_SIZE != 0)
+    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
@@ -166,7 +182,8 @@ int unmap_page(uint32_t virtual_address) {
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     table[table_index] = 0;
 
@@ -175,16 +192,16 @@ int unmap_page(uint32_t virtual_address) {
     return 1;
 }
 
-int is_page_mapped(uint32_t virtual_address) {
+int is_page_mapped(uint32_t *virtual_address) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
 
-    if (virtual_address % PAGE_SIZE != 0)
+    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
@@ -192,21 +209,25 @@ int is_page_mapped(uint32_t virtual_address) {
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     return (table[table_index] & PAGE_PRESENT) != 0;
 }
 
-int virtual_to_physical(uint32_t virtual_address, uint32_t* physical_address) {
+int virtual_to_physical(
+    uint32_t *virtual_address,
+    uint32_t **physical_address
+) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t offset;
     uint32_t* table;
     uint32_t entry;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
-    offset = virtual_address & 0xFFF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
+    offset = (uint32_t)virtual_address & 0xFFF;
 
     if (directory_index >= 16)
         return 0;
@@ -214,7 +235,8 @@ int virtual_to_physical(uint32_t virtual_address, uint32_t* physical_address) {
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     entry = table[table_index];
 
@@ -222,19 +244,18 @@ int virtual_to_physical(uint32_t virtual_address, uint32_t* physical_address) {
         return 0;
 
     *physical_address =
-        (entry & 0xFFFFF000) |
-        offset;
+        (uint32_t*)((entry & 0xFFFFF000) | offset);
 
     return 1;
 }
 
-uint32_t get_page_flags(uint32_t virtual_address) {
+uint32_t get_page_flags(uint32_t *virtual_address) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
@@ -242,21 +263,25 @@ uint32_t get_page_flags(uint32_t virtual_address) {
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     return table[table_index] & 0xFFF;
 }
 
-int set_page_flags(uint32_t virtual_address, uint32_t flags) {
+int set_page_flags(
+    uint32_t *virtual_address,
+    uint32_t flags
+) {
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
 
-    if (virtual_address % PAGE_SIZE != 0)
+    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = virtual_address >> 22;
-    table_index = (virtual_address >> 12) & 0x3FF;
+    directory_index = (uint32_t)virtual_address >> 22;
+    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
@@ -264,10 +289,14 @@ int set_page_flags(uint32_t virtual_address, uint32_t flags) {
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
 
-    table = (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+    table =
+        (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
     if (!(table[table_index] & PAGE_PRESENT))
         return 0;
+
+    if (flags & PAGE_USER)
+        page_directory[directory_index] |= PAGE_USER;
 
     table[table_index] =
         (table[table_index] & 0xFFFFF000) |
