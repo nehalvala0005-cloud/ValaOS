@@ -15,8 +15,17 @@ build/memory.o: kernel/memory.c
 build/task.o: kernel/task.c
 	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/task.c -o build/task.o
 
-build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o linker.ld
-		ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o
+build/paging.o: kernel/paging.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/paging.c -o build/paging.o
+
+build/pagefault.o: kernel/pagefault.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/pagefault.c -o build/pagefault.o
+
+build/pagefault_asm.o: kernel/pagefault.asm
+	nasm -f elf32 kernel/pagefault.asm -o build/pagefault_asm.o
+
+build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/pagefault.o build/pagefault_asm.o linker.ld
+		ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/pagefault.o build/pagefault_asm.o
 iso: build/kernel.bin
 	mkdir -p build/isodir/boot/grub
 	cp build/kernel.bin build/isodir/boot/kernel.bin

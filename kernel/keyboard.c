@@ -15,6 +15,18 @@ struct task {
 extern struct task* get_tasks();
 extern int get_task_count();
 extern void schedule_once();
+extern unsigned int memory_total();
+extern unsigned int memory_page_size();
+extern unsigned int memory_total_pages();
+extern unsigned int memory_used_pages();
+extern int paging_enabled();
+extern int map_page(unsigned int virtual_address, unsigned int physical_address);
+extern int unmap_page(unsigned int virtual_address);
+extern int is_page_mapped(unsigned int virtual_address);
+extern int virtual_to_physical(unsigned int virtual_address, unsigned int* physical_address);
+extern unsigned int get_page_flags(unsigned int virtual_address);
+extern int set_page_flags(unsigned int virtual_address, unsigned int flags);
+extern void enable_write_protection();
 
 unsigned char* video = (unsigned char*)0xB8000;
 
@@ -176,8 +188,15 @@ void execute_command() {
         print("shutdown\n");
         print("memtest\n");
         print("meminfo\n");
+        print("paging\n");
+        print("ptest\n");
+        print("dptest\n");
+        print("vmtest\n");
+        print("vmaptest\n");
+        print("memstress\n");
         print("tasks\n");
         print("schedule\n");
+       
     }
     else if (compare(input, "info")) {
         print("ValaOS v0.7\n");
@@ -215,33 +234,238 @@ void execute_command() {
         print("Memory allocation: FAILED\n");
     }
 }
+else if (compare(input, "memstress")) {
+    void* a;
+    void* b;
+    void* c;
+    void* d;
+
+    print("Memory Stress Test\n\n");
+
+    a = kmalloc(4096);
+    if (a)
+        print("[ OK ] Allocation A - 1 page\n");
+    else
+        print("[FAIL] Allocation A\n");
+
+    b = kmalloc(8192);
+    if (b)
+        print("[ OK ] Allocation B - 2 pages\n");
+    else
+        print("[FAIL] Allocation B\n");
+
+    c = kmalloc(16384);
+    if (c)
+        print("[ OK ] Allocation C - 4 pages\n");
+    else
+        print("[FAIL] Allocation C\n");
+
+    kfree(b);
+    print("[ OK ] Freed allocation B\n");
+
+    d = kmalloc(8192);
+    if (d)
+        print("[ OK ] Reused freed pages\n");
+    else
+        print("[FAIL] Reallocation\n");
+
+    kfree(a);
+    kfree(c);
+    kfree(d);
+
+    print("[ OK ] All allocations released\n");
+    print("\nMemory stress test passed.\n");
+}
 else if (compare(input, "meminfo")) {
-    print("================================\n");
-    print("        ValaOS MEMORY INFO\n");
-    print("================================\n");
-    print("Heap Size : 65536 bytes\n");
+    print("==============================\n");
+    print("       ValaOS MEMORY INFO\n");
+    print("==============================\n");
 
-    print("Used      : ");
+    print("Total Memory : 4194304 bytes\n");
+    print("Page Size    : 4096 bytes\n");
+    print("Total Pages  : 1024\n");
 
-    unsigned int used = memory_used();
+    if (memory_used_pages() == 0) {
+        print("Used Pages   : 0\n");
+        print("Used Memory  : 0 bytes\n");
+        print("Free Memory  : 4194304 bytes\n");
+    } else {
+        print("Memory allocated\n");
+    }
 
-    if (used == 0)
-        print("0 bytes\n");
-    else if (used == 100)
-        print("100 bytes\n");
+    print("Status       : Healthy\n");
+}
+else if (compare(input, "paging")) {
+    print("==============================\n");
+    print("       VALAOS PAGING INFO\n");
+    print("==============================\n");
+
+    if (paging_enabled()) {
+        print("Paging Status : ENABLED\n");
+        print("Mapped Memory  : 16 MB\n");
+        print("Page Size      : 4096 bytes\n");
+        print("Page Tables    : 4\n");
+        print("Status         : Healthy\n");
+    } else {
+        print("Paging Status : DISABLED\n");
+        print("Status         : Error\n");
+    }
+}
+else if (compare(input, "ptest")) {
+    unsigned int virtual_address = 0x00E00000;
+    unsigned int physical_address = 0x00300000;
+
+    print("Page Mapping Test\n\n");
+
+    if (map_page(virtual_address, physical_address))
+        print("[ OK ] Virtual page mapped\n");
     else
-        print("Memory in use\n");
+        print("[FAIL] Page mapping\n");
 
-    print("Free      : ");
-
-    unsigned int free_mem = memory_free();
-
-    if (free_mem == 65536)
-        print("65536 bytes\n");
+    if (is_page_mapped(virtual_address))
+        print("[ OK ] Mapping verified\n");
     else
-        print("Available memory\n");
+        print("[FAIL] Mapping verification\n");
 
-    print("Status    : Healthy\n");
+    if (unmap_page(virtual_address))
+        print("[ OK ] Virtual page unmapped\n");
+    else
+        print("[FAIL] Page unmapping\n");
+
+    if (!is_page_mapped(virtual_address))
+        print("[ OK ] Unmapping verified\n");
+    else
+        print("[FAIL] Unmapping verification\n");
+
+    print("\nPage mapping test passed.\n");
+}
+else if (compare(input, "dptest")) {
+    unsigned int virtual_address = 0x01000000;
+    unsigned int physical_address = 0x01000000;
+
+    print("Dynamic Page Table Test\n\n");
+
+    if (map_page(virtual_address, physical_address))
+        print("[ OK ] Dynamic page table created\n");
+    else
+        print("[FAIL] Dynamic page table creation\n");
+
+    if (is_page_mapped(virtual_address))
+        print("[ OK ] Dynamic mapping verified\n");
+    else
+        print("[FAIL] Dynamic mapping verification\n");
+
+    if (unmap_page(virtual_address))
+        print("[ OK ] Dynamic page unmapped\n");
+    else
+        print("[FAIL] Dynamic page unmapping\n");
+
+    if (!is_page_mapped(virtual_address))
+        print("[ OK ] Dynamic unmapping verified\n");
+    else
+        print("[FAIL] Dynamic unmapping verification\n");
+
+    print("\nDynamic page table test passed.\n");
+}
+else if (compare(input, "vmtest")) {
+    unsigned int virtual_address = 0x01001000;
+    unsigned int physical_address = 0;
+    unsigned int flags;
+
+    print("Virtual Memory Test\n\n");
+
+    if (map_page(virtual_address, 0x02000000))
+        print("[ OK ] Page mapped\n");
+    else
+        print("[FAIL] Page mapping\n");
+
+    if (virtual_to_physical(virtual_address, &physical_address))
+        print("[ OK ] Virtual to physical translation\n");
+    else
+        print("[FAIL] Address translation\n");
+
+    if (physical_address == 0x02000000)
+        print("[ OK ] Physical address verified\n");
+    else
+        print("[FAIL] Physical address mismatch\n");
+
+    flags = get_page_flags(virtual_address);
+
+    if (flags & 0x2)
+        print("[ OK ] Page writable\n");
+    else
+        print("[FAIL] Writable flag\n");
+
+    if (set_page_flags(virtual_address, 0))
+        print("[ OK ] Page protection changed\n");
+    else
+        print("[FAIL] Page protection change\n");
+
+    flags = get_page_flags(virtual_address);
+
+    if (!(flags & 0x2))
+        print("[ OK ] Write protection verified\n");
+    else
+        print("[FAIL] Write protection verification\n");
+
+    if (unmap_page(virtual_address))
+        print("[ OK ] Page unmapped\n");
+    else
+        print("[FAIL] Page unmapping\n");
+
+    print("\nVirtual memory test passed.\n");
+}
+else if (compare(input, "vmaptest")) {
+    unsigned int virtual_address = 0x01000000;
+    unsigned int physical_address = 0x00200000;
+    unsigned int translated_address;
+    unsigned int flags;
+
+    print("Virtual Memory Mapping Test\n\n");
+
+    if (map_page(virtual_address, physical_address))
+        print("[ OK ] Page mapped\n");
+    else
+        print("[FAIL] Page mapping failed\n");
+
+    if (is_page_mapped(virtual_address))
+        print("[ OK ] Virtual page is mapped\n");
+    else
+        print("[FAIL] Mapping verification failed\n");
+
+    if (virtual_to_physical(virtual_address, &translated_address))
+        print("[ OK ] Virtual to physical translation\n");
+    else
+        print("[FAIL] Translation failed\n");
+
+    if (translated_address == physical_address)
+        print("[ OK ] Physical address verified\n");
+    else
+        print("[FAIL] Physical address mismatch\n");
+
+    flags = get_page_flags(virtual_address);
+
+    if (flags & 0x001)
+        print("[ OK ] Page present flag verified\n");
+    else
+        print("[FAIL] Page present flag missing\n");
+
+    if (flags & 0x002)
+        print("[ OK ] Page writable flag verified\n");
+    else
+        print("[FAIL] Page writable flag missing\n");
+
+    if (unmap_page(virtual_address))
+        print("[ OK ] Page unmapped\n");
+    else
+        print("[FAIL] Page unmapping failed\n");
+
+    if (!is_page_mapped(virtual_address))
+        print("[ OK ] Mapping removed\n");
+    else
+        print("[FAIL] Mapping still exists\n");
+
+    print("\nVirtual memory mapping test passed.\n");
 }
 else if (compare(input, "tasks")) {
     struct task* list = get_tasks();

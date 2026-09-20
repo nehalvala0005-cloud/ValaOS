@@ -1,43 +1,161 @@
 typedef unsigned int uint32_t;
 
-#define HEAP_SIZE 65536
+#define PAGE_SIZE 4096
+#define TOTAL_MEMORY (4 * 1024 * 1024)
+#define TOTAL_PAGES (TOTAL_MEMORY / PAGE_SIZE)
+#define MAX_ALLOCATIONS 128
 
-static unsigned char heap[HEAP_SIZE];
-static uint32_t heap_used = 0;
-static uint32_t last_alloc_size = 0;
+struct allocation {
+    uint32_t start_page;
+    uint32_t page_count;
+    int used;
+};
+
+static unsigned char heap[TOTAL_MEMORY];
+static unsigned char page_bitmap[TOTAL_PAGES / 8];
+
+static struct allocation allocations[MAX_ALLOCATIONS];
+
+static uint32_t allocated_pages = 0;
+
+static void set_page_used(uint32_t page) {
+    page_bitmap[page / 8] |= (1 << (page % 8));
+}
+
+static void set_page_free(uint32_t page) {
+    page_bitmap[page / 8] &= ~(1 << (page % 8));
+}
+
+static int page_is_used(uint32_t page) {
+    return page_bitmap[page / 8] & (1 << (page % 8));
+}
+
+static int find_free_pages(uint32_t pages) {
+    uint32_t i;
+    uint32_t count = 0;
+    uint32_t start = 0;
+
+    for (i = 0; i < TOTAL_PAGES; i++) {
+        if (!page_is_used(i)) {
+            if (count == 0)
+                start = i;
+
+            count++;
+
+            if (count == pages)
+                return start;
+        } else {
+            count = 0;
+        }
+    }
+
+    return -1;
+}
+
+static int find_free_allocation_slot() {
+    int i;
+
+    for (i = 0; i < MAX_ALLOCATIONS; i++) {
+        if (!allocations[i].used)
+            return i;
+    }
+
+    return -1;
+}
 
 void* kmalloc(uint32_t size) {
+    uint32_t pages;
+    int start;
+    int slot;
+    uint32_t i;
+
     if (size == 0)
         return 0;
 
-    if (heap_used + size > HEAP_SIZE)
+    pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    start = find_free_pages(pages);
+
+    if (start < 0)
         return 0;
 
-    void* address = &heap[heap_used];
+    slot = find_free_allocation_slot();
 
-    heap_used += size;
-    last_alloc_size = size;
+    if (slot < 0)
+        return 0;
 
-    return address;
+    for (i = 0; i < pages; i++)
+        set_page_used(start + i);
+
+    allocations[slot].start_page = start;
+    allocations[slot].page_count = pages;
+    allocations[slot].used = 1;
+
+    allocated_pages += pages;
+
+    return &heap[start * PAGE_SIZE];
 }
 
 void kfree(void* address) {
+    uint32_t offset;
+    uint32_t page;
+    uint32_t i;
+    int slot;
+
     if (address == 0)
         return;
 
-    if (heap_used == 0 || last_alloc_size == 0)
+    if (address < (void*)heap)
         return;
 
-    if (address == &heap[heap_used - last_alloc_size]) {
-        heap_used -= last_alloc_size;
-        last_alloc_size = 0;
+    if (address >= (void*)(heap + TOTAL_MEMORY))
+        return;
+
+    offset = (uint32_t)((unsigned char*)address - heap);
+
+    if (offset % PAGE_SIZE != 0)
+        return;
+
+    page = offset / PAGE_SIZE;
+
+    for (slot = 0; slot < MAX_ALLOCATIONS; slot++) {
+        if (allocations[slot].used &&
+            allocations[slot].start_page == page) {
+
+            for (i = 0; i < allocations[slot].page_count; i++)
+                set_page_free(page + i);
+
+            allocated_pages -= allocations[slot].page_count;
+
+            allocations[slot].start_page = 0;
+            allocations[slot].page_count = 0;
+            allocations[slot].used = 0;
+
+            return;
+        }
     }
 }
 
 uint32_t memory_used() {
-    return heap_used;
+    return allocated_pages * PAGE_SIZE;
 }
 
 uint32_t memory_free() {
-    return HEAP_SIZE - heap_used;
+    return TOTAL_MEMORY - memory_used();
+}
+
+uint32_t memory_total() {
+    return TOTAL_MEMORY;
+}
+
+uint32_t memory_page_size() {
+    return PAGE_SIZE;
+}
+
+uint32_t memory_total_pages() {
+    return TOTAL_PAGES;
+}
+
+uint32_t memory_used_pages() {
+    return allocated_pages;
 }
