@@ -6,10 +6,26 @@ extern void kfree(void* address);
 extern unsigned int memory_used();
 extern unsigned int memory_free();
 
+struct task_context {
+    unsigned int eax;
+    unsigned int ecx;
+    unsigned int edx;
+    unsigned int ebx;
+    unsigned int esp;
+    unsigned int ebp;
+    unsigned int esi;
+    unsigned int edi;
+    unsigned int eip;
+    unsigned int cs;
+    unsigned int eflags;
+};
 struct task {
     unsigned int pid;
     const char* name;
     const char* state;
+    unsigned int stack_base;
+    unsigned int stack_top;
+    struct task_context context;
 };
 
 extern struct task* get_tasks();

@@ -92,10 +92,7 @@ void interrupts_init() {
 }
 
 void timer_handler() {
-
     timer_ticks++;
-
-    scheduler_tick();
 
     outb(0x20, 0x20);
 }
