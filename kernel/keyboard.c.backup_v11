@@ -1,0 +1,339 @@
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+
+extern void* kmalloc(unsigned int size);
+extern void kfree(void* address);
+extern unsigned int memory_used();
+extern unsigned int memory_free();
+
+struct task {
+    unsigned int pid;
+    const char* name;
+    const char* state;
+};
+
+extern struct task* get_tasks();
+extern int get_task_count();
+extern void schedule_once();
+
+unsigned char* video = (unsigned char*)0xB8000;
+
+char input[64];
+int input_pos = 0;
+
+int row = 0;
+int col = 0;
+
+char key_map[] = {
+    0, 27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b',
+    '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
+    0,'a','s','d','f','g','h','j','k','l',';','\'','`',
+    0,'\\','z','x','c','v','b','n','m',',','.','/',0,
+    0,0,' '
+};
+
+uint8_t inb(uint16_t port) {
+    uint8_t value;
+
+    __asm__ volatile (
+        "inb %1, %0"
+        : "=a"(value)
+        : "Nd"(port)
+    );
+
+    return value;
+}
+
+void outb(uint16_t port, uint8_t value) {
+    __asm__ volatile (
+        "outb %0, %1"
+        :
+        : "a"(value), "Nd"(port)
+    );
+}
+
+void hide_cursor() {
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x20);
+}
+
+void move_cursor_next_line() {
+    col = 0;
+    row++;
+
+    if (row >= 25) {
+        for (int r = 1; r < 25; r++) {
+            for (int c = 0; c < 80; c++) {
+                int from = (r * 80 + c) * 2;
+                int to = ((r - 1) * 80 + c) * 2;
+
+                video[to] = video[from];
+                video[to + 1] = video[from + 1];
+            }
+        }
+
+        for (int c = 0; c < 80; c++) {
+            int pos = (24 * 80 + c) * 2;
+
+            video[pos] = ' ';
+            video[pos + 1] = 0x07;
+        }
+
+        row = 24;
+    }
+}
+
+void putchar(char c) {
+    if (c == '\n') {
+        move_cursor_next_line();
+        return;
+    }
+
+    if (col >= 80)
+        move_cursor_next_line();
+
+    int pos = (row * 80 + col) * 2;
+
+    video[pos] = c;
+    video[pos + 1] = 0x07;
+
+    col++;
+}
+
+void print(const char* str) {
+    while (*str) {
+        putchar(*str);
+        str++;
+    }
+}
+
+void clear_screen() {
+    for (int r = 0; r < 25; r++) {
+        for (int c = 0; c < 80; c++) {
+            int pos = (r * 80 + c) * 2;
+
+            video[pos] = ' ';
+            video[pos + 1] = 0x07;
+        }
+    }
+
+    row = 0;
+    col = 0;
+}
+
+int compare(const char* a, const char* b) {
+    while (*a && *b) {
+        if (*a != *b)
+            return 0;
+
+        a++;
+        b++;
+    }
+
+    return *a == *b;
+}
+
+int starts_with_echo(const char* str) {
+    return str[0] == 'e' &&
+           str[1] == 'c' &&
+           str[2] == 'h' &&
+           str[3] == 'o' &&
+           str[4] == ' ';
+}
+
+void reboot_system() {
+    uint8_t good = 0x02;
+
+    while (good & 0x02)
+        good = inb(0x64);
+
+    outb(0x64, 0xFE);
+
+    while (1)
+        __asm__ volatile ("hlt");
+}
+
+void shutdown_system() {
+    print("Shutting down ValaOS...\n");
+    print("System halted.\n");
+
+    while (1)
+        __asm__ volatile ("cli; hlt");
+}
+
+void execute_command() {
+    putchar('\n');
+
+    if (compare(input, "help")) {
+        print("Available commands:\n");
+        print("help\n");
+        print("info\n");
+        print("about\n");
+        print("clear\n");
+        print("version\n");
+        print("echo <text>\n");
+        print("reboot\n");
+        print("shutdown\n");
+        print("memtest\n");
+        print("meminfo\n");
+        print("tasks\n");
+        print("schedule\n");
+    }
+    else if (compare(input, "info")) {
+        print("ValaOS v0.7\n");
+        print("Architecture: x86\n");
+        print("Keyboard: PS/2 Polling\n");
+        print("Kernel: Custom\n");
+        print("Status: Running\n");
+    }
+    else if (compare(input, "about")) {
+        print("ValaOS - Custom Operating System\n");
+        print("Built from scratch for learning OS concepts.\n");
+    }
+    else if (compare(input, "clear")) {
+        clear_screen();
+    }
+    else if (compare(input, "version")) {
+        print("ValaOS v0.7\n");
+        print("Architecture: x86\n");
+        print("Shell: ValaShell\n");
+    }
+  else if (compare(input, "memtest")) {
+    void* block = kmalloc(100);
+
+    print("Memory test started.\n");
+
+    if (block != 0) {
+        print("100 bytes allocated.\n");
+        print("Memory allocation: OK\n");
+
+        kfree(block);
+
+        print("100 bytes released.\n");
+        print("Memory release: OK\n");
+    } else {
+        print("Memory allocation: FAILED\n");
+    }
+}
+else if (compare(input, "meminfo")) {
+    print("================================\n");
+    print("        ValaOS MEMORY INFO\n");
+    print("================================\n");
+    print("Heap Size : 65536 bytes\n");
+
+    print("Used      : ");
+
+    unsigned int used = memory_used();
+
+    if (used == 0)
+        print("0 bytes\n");
+    else if (used == 100)
+        print("100 bytes\n");
+    else
+        print("Memory in use\n");
+
+    print("Free      : ");
+
+    unsigned int free_mem = memory_free();
+
+    if (free_mem == 65536)
+        print("65536 bytes\n");
+    else
+        print("Available memory\n");
+
+    print("Status    : Healthy\n");
+}
+else if (compare(input, "tasks")) {
+    struct task* list = get_tasks();
+    int count = get_task_count();
+    int i;
+
+    print("PID   NAME      STATE\n");
+
+    for (i = 0; i < count; i++) {
+        if (list[i].pid == 1)
+            print("1     ");
+        else if (list[i].pid == 2)
+            print("2     ");
+        else if (list[i].pid == 3)
+            print("3     ");
+
+        print(list[i].name);
+        print("      ");
+        print(list[i].state);
+        print("\n");
+    }
+}
+else if (compare(input, "schedule")) {
+    print("Scheduler started...\n\n");
+
+    schedule_once();
+
+    print("Scheduler cycle complete.\n");
+}
+    else if (starts_with_echo(input)) {
+        print(input + 5);
+        putchar('\n');
+    }
+    else if (compare(input, "reboot")) {
+        print("Restarting ValaOS...\n");
+        reboot_system();
+    }
+    else if (compare(input, "shutdown")) {
+        shutdown_system();
+    }
+    else if (input_pos > 0) {
+        print("Unknown command\n");
+    }
+
+    input_pos = 0;
+    input[0] = '\0';
+
+    print("ValaOS> ");
+}
+
+void keyboard_init() {
+    input_pos = 0;
+    input[0] = '\0';
+
+    hide_cursor();
+}
+
+void keyboard_poll() {
+    if (!(inb(0x64) & 1))
+        return;
+
+    uint8_t scancode = inb(0x60);
+
+    if (scancode & 0x80)
+        return;
+
+    if (scancode >= sizeof(key_map))
+        return;
+
+    char c = key_map[scancode];
+
+    if (c == '\b') {
+        if (input_pos > 0 && col > 0) {
+            input_pos--;
+            col--;
+
+            int pos = (row * 80 + col) * 2;
+
+            video[pos] = ' ';
+            video[pos + 1] = 0x07;
+
+            input[input_pos] = '\0';
+        }
+    }
+    else if (c == '\n') {
+        input[input_pos] = '\0';
+        execute_command();
+    }
+    else if (c && input_pos < 63) {
+        input[input_pos++] = c;
+        input[input_pos] = '\0';
+
+        putchar(c);
+    }
+}

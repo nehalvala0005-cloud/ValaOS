@@ -20,14 +20,7 @@ extern unsigned int memory_page_size();
 extern unsigned int memory_total_pages();
 extern unsigned int memory_used_pages();
 extern int paging_enabled();
-extern int map_page(unsigned int virtual_address, unsigned int physical_address);
-extern int unmap_page(unsigned int virtual_address);
-extern int is_page_mapped(unsigned int virtual_address);
-extern int virtual_to_physical(unsigned int virtual_address, unsigned int* physical_address);
-extern unsigned int get_page_flags(unsigned int virtual_address);
-extern int set_page_flags(unsigned int virtual_address, unsigned int flags);
-extern void enable_write_protection();
-extern unsigned int get_timer_ticks();
+
 unsigned char* video = (unsigned char*)0xB8000;
 
 char input[64];
@@ -173,32 +166,6 @@ void shutdown_system() {
         __asm__ volatile ("cli; hlt");
 }
 
-void print_number(unsigned int number) {
-    char buffer[10];
-    int i = 0;
-    char output[2];
-
-    if (number == 0) {
-        print("0");
-        return;
-    }
-
-    while (number > 0) {
-        buffer[i] = '0' + (number % 10);
-        number = number / 10;
-        i++;
-    }
-
-    while (i > 0) {
-        i--;
-
-        output[0] = buffer[i];
-        output[1] = '\0';
-
-        print(output);
-    }
-}
-
 void execute_command() {
     putchar('\n');
 
@@ -215,13 +182,8 @@ void execute_command() {
         print("memtest\n");
         print("meminfo\n");
         print("paging\n");
-        print("ptest\n");
-        print("dptest\n");
-        print("vmtest\n");
-        print("vmaptest\n");
         print("memstress\n");
         print("tasks\n");
-        print("ticks\n");
         print("schedule\n");
        
     }
@@ -338,162 +300,6 @@ else if (compare(input, "paging")) {
         print("Status         : Error\n");
     }
 }
-else if (compare(input, "ptest")) {
-    unsigned int virtual_address = 0x00E00000;
-    unsigned int physical_address = 0x00300000;
-
-    print("Page Mapping Test\n\n");
-
-    if (map_page(virtual_address, physical_address))
-        print("[ OK ] Virtual page mapped\n");
-    else
-        print("[FAIL] Page mapping\n");
-
-    if (is_page_mapped(virtual_address))
-        print("[ OK ] Mapping verified\n");
-    else
-        print("[FAIL] Mapping verification\n");
-
-    if (unmap_page(virtual_address))
-        print("[ OK ] Virtual page unmapped\n");
-    else
-        print("[FAIL] Page unmapping\n");
-
-    if (!is_page_mapped(virtual_address))
-        print("[ OK ] Unmapping verified\n");
-    else
-        print("[FAIL] Unmapping verification\n");
-
-    print("\nPage mapping test passed.\n");
-}
-else if (compare(input, "dptest")) {
-    unsigned int virtual_address = 0x01000000;
-    unsigned int physical_address = 0x01000000;
-
-    print("Dynamic Page Table Test\n\n");
-
-    if (map_page(virtual_address, physical_address))
-        print("[ OK ] Dynamic page table created\n");
-    else
-        print("[FAIL] Dynamic page table creation\n");
-
-    if (is_page_mapped(virtual_address))
-        print("[ OK ] Dynamic mapping verified\n");
-    else
-        print("[FAIL] Dynamic mapping verification\n");
-
-    if (unmap_page(virtual_address))
-        print("[ OK ] Dynamic page unmapped\n");
-    else
-        print("[FAIL] Dynamic page unmapping\n");
-
-    if (!is_page_mapped(virtual_address))
-        print("[ OK ] Dynamic unmapping verified\n");
-    else
-        print("[FAIL] Dynamic unmapping verification\n");
-
-    print("\nDynamic page table test passed.\n");
-}
-else if (compare(input, "vmtest")) {
-    unsigned int virtual_address = 0x01001000;
-    unsigned int physical_address = 0;
-    unsigned int flags;
-
-    print("Virtual Memory Test\n\n");
-
-    if (map_page(virtual_address, 0x02000000))
-        print("[ OK ] Page mapped\n");
-    else
-        print("[FAIL] Page mapping\n");
-
-    if (virtual_to_physical(virtual_address, &physical_address))
-        print("[ OK ] Virtual to physical translation\n");
-    else
-        print("[FAIL] Address translation\n");
-
-    if (physical_address == 0x02000000)
-        print("[ OK ] Physical address verified\n");
-    else
-        print("[FAIL] Physical address mismatch\n");
-
-    flags = get_page_flags(virtual_address);
-
-    if (flags & 0x2)
-        print("[ OK ] Page writable\n");
-    else
-        print("[FAIL] Writable flag\n");
-
-    if (set_page_flags(virtual_address, 0))
-        print("[ OK ] Page protection changed\n");
-    else
-        print("[FAIL] Page protection change\n");
-
-    flags = get_page_flags(virtual_address);
-
-    if (!(flags & 0x2))
-        print("[ OK ] Write protection verified\n");
-    else
-        print("[FAIL] Write protection verification\n");
-
-    if (unmap_page(virtual_address))
-        print("[ OK ] Page unmapped\n");
-    else
-        print("[FAIL] Page unmapping\n");
-
-    print("\nVirtual memory test passed.\n");
-}
-else if (compare(input, "vmaptest")) {
-    unsigned int virtual_address = 0x01000000;
-    unsigned int physical_address = 0x00200000;
-    unsigned int translated_address;
-    unsigned int flags;
-
-    print("Virtual Memory Mapping Test\n\n");
-
-    if (map_page(virtual_address, physical_address))
-        print("[ OK ] Page mapped\n");
-    else
-        print("[FAIL] Page mapping failed\n");
-
-    if (is_page_mapped(virtual_address))
-        print("[ OK ] Virtual page is mapped\n");
-    else
-        print("[FAIL] Mapping verification failed\n");
-
-    if (virtual_to_physical(virtual_address, &translated_address))
-        print("[ OK ] Virtual to physical translation\n");
-    else
-        print("[FAIL] Translation failed\n");
-
-    if (translated_address == physical_address)
-        print("[ OK ] Physical address verified\n");
-    else
-        print("[FAIL] Physical address mismatch\n");
-
-    flags = get_page_flags(virtual_address);
-
-    if (flags & 0x001)
-        print("[ OK ] Page present flag verified\n");
-    else
-        print("[FAIL] Page present flag missing\n");
-
-    if (flags & 0x002)
-        print("[ OK ] Page writable flag verified\n");
-    else
-        print("[FAIL] Page writable flag missing\n");
-
-    if (unmap_page(virtual_address))
-        print("[ OK ] Page unmapped\n");
-    else
-        print("[FAIL] Page unmapping failed\n");
-
-    if (!is_page_mapped(virtual_address))
-        print("[ OK ] Mapping removed\n");
-    else
-        print("[FAIL] Mapping still exists\n");
-
-    print("\nVirtual memory mapping test passed.\n");
-}
 else if (compare(input, "tasks")) {
     struct task* list = get_tasks();
     int count = get_task_count();
@@ -514,19 +320,6 @@ else if (compare(input, "tasks")) {
         print(list[i].state);
         print("\n");
     }
-}
-else if (compare(input, "ticks")) {
-    unsigned int ticks;
-
-    ticks = get_timer_ticks();
-
-    print("Timer Information\n\n");
-    print("Timer Frequency : 100 Hz\n");
-    print("Timer Ticks     : ");
-
-    print_number(ticks);
-
-    print("\nTimer Status    : RUNNING\n");
 }
 else if (compare(input, "schedule")) {
     print("Scheduler started...\n\n");

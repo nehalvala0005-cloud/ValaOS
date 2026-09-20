@@ -4,19 +4,10 @@ extern void clear_screen();
 extern void print(const char* str);
 extern void paging_init();
 extern int paging_enabled();
-extern void page_fault_init();
-extern void enable_write_protection();
-extern void interrupts_init();
 
 void kernel_main() {
-    __asm__ volatile ("cli");
-
     clear_screen();
-
     paging_init();
-    page_fault_init();
-    enable_write_protection();
-    interrupts_init();
 
     print("========================================\n");
     print("              V A L A O S\n");
@@ -32,11 +23,9 @@ void kernel_main() {
     print("Welcome to ValaOS!\n\n");
     print("ValaOS> ");
 
-   keyboard_init();
+    keyboard_init();
 
-__asm__ volatile ("sti");
-
-while (1) {
-    keyboard_poll();
-}
+    while (1) {
+        keyboard_poll();
+    }
 }

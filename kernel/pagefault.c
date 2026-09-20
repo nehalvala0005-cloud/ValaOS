@@ -32,7 +32,7 @@ static void outb(uint16_t port, uint8_t value) {
 
 static void idt_set_gate(int number, uint32_t handler) {
     idt[number].offset_low = handler & 0xFFFF;
-    idt[number].selector = 0x08;
+    idt[number].selector = 0x10;
     idt[number].zero = 0;
     idt[number].flags = 0x8E;
     idt[number].offset_high = (handler >> 16) & 0xFFFF;

@@ -2,6 +2,8 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 
+extern void timer_isr();
+
 struct idt_entry {
     uint16_t offset_low;
     uint16_t selector;
@@ -15,47 +17,28 @@ struct idt_ptr {
     uint32_t base;
 } __attribute__((packed));
 
-struct idt_entry idt[256];
-struct idt_ptr idtp;
+static struct idt_entry idt[256];
+static struct idt_ptr idt_descriptor;
 
-extern void keyboard_isr();
+static uint32_t timer_ticks = 0;
 
-void outb(uint16_t port, uint8_t value) {
-    __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+static void outb(uint16_t port, uint8_t value) {
+    __asm__ volatile (
+        "outb %0, %1"
+        :
+        : "a"(value), "Nd"(port)
+    );
 }
 
-uint8_t inb(uint16_t port) {
-    uint8_t value;
-    __asm__ volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
-    return value;
+static void idt_set_gate(int number, uint32_t handler) {
+    idt[number].offset_low = handler & 0xFFFF;
+    idt[number].selector = 0x10;
+    idt[number].zero = 0;
+    idt[number].flags = 0x8E;
+    idt[number].offset_high = (handler >> 16) & 0xFFFF;
 }
 
-void idt_set_gate(int n, uint32_t handler) {
-    idt[n].offset_low = handler & 0xFFFF;
-    idt[n].selector = 0x08;
-    idt[n].zero = 0;
-    idt[n].flags = 0x8E;
-    idt[n].offset_high = (handler >> 16) & 0xFFFF;
-}
-
-void idt_init() {
-    idtp.limit = sizeof(idt) - 1;
-    idtp.base = (uint32_t)&idt;
-
-    for (int i = 0; i < 256; i++) {
-        idt[i].offset_low = 0;
-        idt[i].selector = 0;
-        idt[i].zero = 0;
-        idt[i].flags = 0;
-        idt[i].offset_high = 0;
-    }
-
-    idt_set_gate(33, (uint32_t)keyboard_isr);
-
-    __asm__ volatile ("lidt %0" : : "m"(idtp));
-}
-
-void pic_init() {
+static void pic_init() {
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
 
@@ -68,6 +51,51 @@ void pic_init() {
     outb(0x21, 0x01);
     outb(0xA1, 0x01);
 
-    outb(0x21, 0xFD);
+    outb(0x21, 0xFE);
     outb(0xA1, 0xFF);
+}
+
+static void pit_init() {
+    uint32_t divisor = 11931;
+
+    outb(0x43, 0x36);
+
+    outb(0x40, divisor & 0xFF);
+    outb(0x40, (divisor >> 8) & 0xFF);
+}
+
+void interrupts_init() {
+    int i;
+
+    for (i = 0; i < 256; i++) {
+        idt[i].offset_low = 0;
+        idt[i].selector = 0;
+        idt[i].zero = 0;
+        idt[i].flags = 0;
+        idt[i].offset_high = 0;
+    }
+
+    idt_set_gate(32, (uint32_t)timer_isr);
+
+    idt_descriptor.limit = sizeof(idt) - 1;
+    idt_descriptor.base = (uint32_t)idt;
+
+    __asm__ volatile (
+        "lidt %0"
+        :
+        : "m"(idt_descriptor)
+    );
+
+    pic_init();
+    pit_init();
+}
+
+void timer_handler() {
+    timer_ticks++;
+
+    outb(0x20, 0x20);
+}
+
+uint32_t get_timer_ticks() {
+    return timer_ticks;
 }
