@@ -7,6 +7,7 @@ extern int paging_enabled();
 extern void enable_write_protection();
 extern void interrupts_init();
 extern void task_context_init();
+extern void tss_init();
 
 void kernel_main() {
     __asm__ volatile ("cli");
@@ -16,7 +17,9 @@ void kernel_main() {
     paging_init();
     enable_write_protection();
     interrupts_init();
+    tss_init();
     task_context_init();
+    
 
     print("========================================\n");
     print("              V A L A O S\n");

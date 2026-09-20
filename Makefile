@@ -30,8 +30,14 @@ build/pagefault_asm.o: kernel/pagefault.asm
 build/timer.o: kernel/timer.asm
 	nasm -f elf32 kernel/timer.asm -o build/timer.o
 
-build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o linker.ld
-		ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o
+build/tss.o: kernel/tss.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/tss.c -o build/tss.o
+
+build/tss_asm.o: kernel/tss.asm
+	nasm -f elf32 kernel/tss.asm -o build/tss_asm.o
+
+build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o linker.ld
+		ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o
 iso: build/kernel.bin
 	mkdir -p build/isodir/boot/grub
 	cp build/kernel.bin build/isodir/boot/kernel.bin
