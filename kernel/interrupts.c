@@ -3,6 +3,7 @@ typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 
 extern void timer_isr();
+extern void scheduler_tick();
 
 struct idt_entry {
     uint16_t offset_low;
@@ -91,7 +92,10 @@ void interrupts_init() {
 }
 
 void timer_handler() {
+
     timer_ticks++;
+
+    scheduler_tick();
 
     outb(0x20, 0x20);
 }

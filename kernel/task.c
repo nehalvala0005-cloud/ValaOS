@@ -43,3 +43,13 @@ void schedule_once() {
         current_task = 0;
     }
 }
+static uint32_t scheduler_tick_counter = 0;
+
+void scheduler_tick() {
+    scheduler_tick_counter++;
+
+    if (scheduler_tick_counter >= 50) {
+        scheduler_tick_counter = 0;
+        schedule_once();
+    }
+}
