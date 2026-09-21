@@ -31,8 +31,8 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
 }
 
 void kernel_user_exit() {
-    print("[ KERNEL ] Returned from user program\n");
-    print("[ KERNEL ] User task is TERMINATED\n");
+    print("[ KERNEL ] User process exited\n");
+    print("[ KERNEL ] Continuing kernel execution\n");
 
     while (1) {
         __asm__ volatile ("cli; hlt");

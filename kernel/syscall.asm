@@ -22,7 +22,11 @@ syscall_exit:
     add esp, 32
     add esp, 20
 
-    call kernel_user_exit
+    push dword 0x202
+    push dword 0x10
+    push dword kernel_user_exit
+
+    iretd
 
 exit_hang:
     cli
