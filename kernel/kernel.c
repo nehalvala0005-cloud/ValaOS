@@ -18,6 +18,8 @@ extern int map_page_flags(
 
 extern void enter_user_mode();
 
+extern void user_task_start();
+
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
 #define PAGE_USER 0x004
@@ -71,6 +73,7 @@ void user_mode_init() {
         PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
     );
 }
+
 void kernel_main() {
     __asm__ volatile ("cli");
 
@@ -97,9 +100,11 @@ void kernel_main() {
 
     print("Entering Ring 3...\n");
 
-enter_user_mode();
+    user_task_start();
 
-while (1) {
-    __asm__ volatile ("hlt");
-}
+    enter_user_mode();
+
+    while (1) {
+        __asm__ volatile ("hlt");
+    }
 }

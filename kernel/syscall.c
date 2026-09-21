@@ -1,4 +1,5 @@
 extern void print(const char* str);
+extern void user_task_exit();
 
 #define SYS_WRITE 1
 #define SYS_EXIT 2
@@ -18,8 +19,10 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
     }
 
     if (syscall_number == SYS_EXIT) {
+        user_task_exit();
+
         print("[ USER ] sys_exit called\n");
-        print("[ OK ] User program terminated\n");
+        print("[ OK ] User task state: TERMINATED\n");
 
         return 1;
     }
@@ -29,6 +32,7 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
 
 void kernel_user_exit() {
     print("[ KERNEL ] Returned from user program\n");
+    print("[ KERNEL ] User task is TERMINATED\n");
 
     while (1) {
         __asm__ volatile ("cli; hlt");

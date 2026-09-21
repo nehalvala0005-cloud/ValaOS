@@ -21,7 +21,6 @@ struct task_context {
     uint32_t eflags;
 };
 
-
 struct task {
     uint32_t pid;
     const char* name;
@@ -44,6 +43,8 @@ struct task tasks[] = {
 
 int task_count = 3;
 int current_task = 0;
+
+static const char* user_task_state = TASK_READY;
 
 void task_shell() {
     while (1) {
@@ -123,16 +124,15 @@ void schedule_once() {
 
     current_task++;
 
-    if (current_task >= 2) {
+    if (current_task >= 2)
         current_task = 0;
-    }
 
-    for (i = 0; i < task_count; i++) {
+    for (i = 0; i < task_count; i++)
         tasks[i].state = TASK_READY;
-    }
 
     tasks[current_task].state = TASK_RUNNING;
 }
+
 uint32_t task_switch_prepare(uint32_t current_esp) {
     int previous_task = current_task;
 
@@ -140,9 +140,8 @@ uint32_t task_switch_prepare(uint32_t current_esp) {
 
     scheduler_tick();
 
-    if (current_task == previous_task) {
+    if (current_task == previous_task)
         return current_esp;
-    }
 
     return tasks[current_task].context.esp;
 }
@@ -156,4 +155,16 @@ void scheduler_tick() {
         scheduler_tick_counter = 0;
         schedule_once();
     }
+}
+
+void user_task_start() {
+    user_task_state = TASK_RUNNING;
+}
+
+void user_task_exit() {
+    user_task_state = TASK_TERMINATED;
+}
+
+const char* get_user_task_state() {
+    return user_task_state;
 }
