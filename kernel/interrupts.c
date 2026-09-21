@@ -4,6 +4,7 @@ typedef unsigned int uint32_t;
 
 extern void timer_isr();
 extern void scheduler_tick();
+extern void syscall_isr();
 
 struct idt_entry {
     uint16_t offset_low;
@@ -39,6 +40,13 @@ static void idt_set_gate(int number, uint32_t handler) {
     idt[number].offset_high = (handler >> 16) & 0xFFFF;
 }
 
+static void idt_set_user_gate(int number, uint32_t handler) {
+    idt[number].offset_low = handler & 0xFFFF;
+    idt[number].selector = 0x10;
+    idt[number].zero = 0;
+    idt[number].flags = 0xEE;
+    idt[number].offset_high = (handler >> 16) & 0xFFFF;
+}
 static void pic_init() {
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
@@ -77,6 +85,7 @@ void interrupts_init() {
     }
 
     idt_set_gate(32, (uint32_t)timer_isr);
+    idt_set_user_gate(0x80, (uint32_t)syscall_isr);
 
     idt_descriptor.limit = sizeof(idt) - 1;
     idt_descriptor.base = (uint32_t)idt;
