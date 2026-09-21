@@ -1,3 +1,5 @@
+extern void print(const char* str);
+
 typedef unsigned int uint32_t;
 
 #define TASK_READY "READY"
@@ -47,6 +49,13 @@ int current_task = 0;
 static const char* user_task_state = TASK_READY;
 
 void task_shell() {
+    static int started = 0;
+
+    if (!started) {
+        started = 1;
+        print("[ SCHED ] Shell task is now running\n");
+    }
+
     while (1) {
         __asm__ volatile ("hlt");
     }

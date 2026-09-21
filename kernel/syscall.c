@@ -32,9 +32,11 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
 
 void kernel_user_exit() {
     print("[ KERNEL ] User process exited\n");
-    print("[ KERNEL ] Continuing kernel execution\n");
+    print("[ KERNEL ] Waiting for scheduler...\n");
+
+    __asm__ volatile ("sti");
 
     while (1) {
-        __asm__ volatile ("cli; hlt");
+        __asm__ volatile ("hlt");
     }
 }
