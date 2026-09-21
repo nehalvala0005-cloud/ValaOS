@@ -44,8 +44,20 @@ void user_mode_init() {
     user_code_page[10] = 0xCD;
     user_code_page[11] = 0x80;
 
-    user_code_page[12] = 0xEB;
-    user_code_page[13] = 0xFE;
+    user_code_page[12] = 0xB8;
+    user_code_page[13] = 0x02;
+    user_code_page[14] = 0x00;
+    user_code_page[15] = 0x00;
+    user_code_page[16] = 0x00;
+
+    user_code_page[17] = 0x31;
+    user_code_page[18] = 0xDB;
+
+    user_code_page[19] = 0xCD;
+    user_code_page[20] = 0x80;
+
+    user_code_page[21] = 0xEB;
+    user_code_page[22] = 0xFE;
 
     map_page_flags(
         (unsigned int*)0x00400000,
@@ -59,7 +71,6 @@ void user_mode_init() {
         PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
     );
 }
-
 void kernel_main() {
     __asm__ volatile ("cli");
 
