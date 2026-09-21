@@ -5,6 +5,8 @@ extern void* kmalloc(unsigned int size);
 extern void kfree(void* address);
 extern unsigned int memory_used();
 extern unsigned int memory_free();
+extern void enter_user_mode();
+extern void user_task_start();
 
 struct task_context {
     unsigned int eax;
@@ -239,6 +241,7 @@ void execute_command() {
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
+        print("run hello\n");
        
     }
     else if (compare(input, "info")) {
@@ -550,6 +553,11 @@ else if (compare(input, "schedule")) {
     schedule_once();
 
     print("Scheduler cycle complete.\n");
+}
+else if (compare(input, "run hello")) {
+    print("Starting user program: hello\n");
+    user_task_start();
+    enter_user_mode();
 }
     else if (starts_with_echo(input)) {
         print(input + 5);

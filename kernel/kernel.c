@@ -98,13 +98,13 @@ void kernel_main() {
 
     print("Welcome to ValaOS!\n\n");
 
-    print("Entering Ring 3...\n");
+   print("ValaOS> ");
 
-    user_task_start();
+keyboard_init();
 
-    enter_user_mode();
+__asm__ volatile ("sti");
 
-    while (1) {
-        __asm__ volatile ("hlt");
-    }
+while (1) {
+    keyboard_poll();
+}
 }

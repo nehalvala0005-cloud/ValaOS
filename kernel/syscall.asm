@@ -1,8 +1,9 @@
 section .text
 
 global syscall_isr
+
 extern syscall_handler
-extern kernel_user_exit
+extern user_return_esp
 
 syscall_isr:
     pusha
@@ -22,13 +23,7 @@ syscall_exit:
     add esp, 32
     add esp, 20
 
-    push dword 0x202
-    push dword 0x10
-    push dword kernel_user_exit
+    sti
 
-    iretd
-
-exit_hang:
-    cli
-    hlt
-    jmp exit_hang
+    mov esp, [user_return_esp]
+    ret

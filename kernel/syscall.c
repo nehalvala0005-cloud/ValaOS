@@ -22,21 +22,10 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
         user_task_exit();
 
         print("[ USER ] sys_exit called\n");
-        print("[ OK ] User task state: TERMINATED\n");
+        print("[ OK ] User task terminated\n");
 
         return 1;
     }
 
     return 0;
-}
-
-void kernel_user_exit() {
-    print("[ KERNEL ] User process exited\n");
-    print("[ KERNEL ] Waiting for scheduler...\n");
-
-    __asm__ volatile ("sti");
-
-    while (1) {
-        __asm__ volatile ("hlt");
-    }
 }

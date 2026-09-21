@@ -1,8 +1,15 @@
 section .text
 
 global enter_user_mode
+global user_return_esp
+
+user_return_esp:
+    dd 0
 
 enter_user_mode:
+    mov eax, esp
+    mov [user_return_esp], eax
+
     cli
 
     mov ax, 0x23
