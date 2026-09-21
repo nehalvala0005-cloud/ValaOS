@@ -35,11 +35,17 @@ void user_mode_init() {
     user_code_page[3] = 0x00;
     user_code_page[4] = 0x00;
 
-    user_code_page[5] = 0xCD;
-    user_code_page[6] = 0x80;
+    user_code_page[5] = 0xBB;
+    user_code_page[6] = 'U';
+    user_code_page[7] = 0x00;
+    user_code_page[8] = 0x00;
+    user_code_page[9] = 0x00;
 
-    user_code_page[7] = 0xEB;
-    user_code_page[8] = 0xFE;
+    user_code_page[10] = 0xCD;
+    user_code_page[11] = 0x80;
+
+    user_code_page[12] = 0xEB;
+    user_code_page[13] = 0xFE;
 
     map_page_flags(
         (unsigned int*)0x00400000,
