@@ -48,6 +48,9 @@ int current_task = 0;
 
 static const char* user_task_state = TASK_READY;
 
+extern void keyboard_poll();
+extern void print(const char* str);
+
 void task_shell() {
     static int started = 0;
 
@@ -57,7 +60,7 @@ void task_shell() {
     }
 
     while (1) {
-        __asm__ volatile ("hlt");
+        keyboard_poll();
     }
 }
 
