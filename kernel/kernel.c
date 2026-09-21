@@ -97,9 +97,9 @@ void kernel_main() {
 
     print("Entering Ring 3...\n");
 
-    enter_user_mode();
+enter_user_mode();
 
-    while (1) {
-        keyboard_poll();
-    }
+while (1) {
+    __asm__ volatile ("hlt");
+}
 }
