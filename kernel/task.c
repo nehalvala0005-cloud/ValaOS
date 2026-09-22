@@ -140,7 +140,7 @@ int task_kill(uint32_t pid) {
 
     for (i = 0; i < task_count; i++) {
         if (tasks[i].pid == pid) {
-            if (tasks[i].state == TASK_TERMINATED) {
+            if (tasks[i].state[0] == 'T') {
                 return -2;
             }
 
@@ -162,17 +162,17 @@ void schedule_once() {
         if (next_task >= 2)
             next_task = 0;
 
-        if (tasks[next_task].state != TASK_TERMINATED)
+        if (tasks[next_task].state[0] != 'T')
             break;
     }
 
-    if (tasks[next_task].state == TASK_TERMINATED)
+    if (tasks[next_task].state[0] == 'T')
         return;
 
     current_task = next_task;
 
     for (i = 0; i < task_count; i++) {
-        if (tasks[i].state != TASK_TERMINATED)
+        if (tasks[i].state[0] != 'T')
             tasks[i].state = TASK_READY;
     }
 

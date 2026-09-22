@@ -218,7 +218,36 @@ void print_number(unsigned int number) {
     }
 }
 
+int parse_kill_pid(const char* str, unsigned int* pid) {
+    unsigned int value = 0;
+    int i = 5;
+
+    if (str[0] != 'k' ||
+        str[1] != 'i' ||
+        str[2] != 'l' ||
+        str[3] != 'l' ||
+        str[4] != ' ')
+        return 0;
+
+    if (str[i] < '0' || str[i] > '9')
+        return 0;
+
+    while (str[i] >= '0' && str[i] <= '9') {
+        value = value * 10 + (str[i] - '0');
+        i++;
+    }
+
+    if (str[i] != '\0')
+        return 0;
+
+    *pid = value;
+    return 1;
+}
+
 void execute_command() {
+    unsigned int kill_pid;
+    int result;
+
     putchar('\n');
 
     if (compare(input, "help")) {
@@ -240,7 +269,7 @@ void execute_command() {
         print("vmaptest\n");
         print("memstress\n");
         print("ps\n");
-        print("kill 3\n");
+        print("kill <PID>\n");
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
@@ -537,15 +566,25 @@ else if (compare(input, "ps")) {
         print("\n");
     }
 }
-else if (compare(input, "kill 3")) {
-    int result = task_kill(3);
+else if (parse_kill_pid(input, &kill_pid)) {
+    result = task_kill(kill_pid);
 
-    if (result == 1)
-        print("[ TASK ] PID 3 terminated\n");
-    else if (result == -2)
-        print("[ TASK ] PID 3 already terminated\n");
-    else
-        print("[ ERROR ] Unable to terminate PID 3\n");
+    if (result == 1) {
+        print("[ TASK ] PID ");
+        print_number(kill_pid);
+        print(" terminated\n");
+    }
+    else if (result == -1) {
+        print("[ ERROR ] Cannot terminate protected task\n");
+    }
+    else if (result == -2) {
+        print("[ TASK ] PID ");
+        print_number(kill_pid);
+        print(" already terminated\n");
+    }
+    else {
+        print("[ ERROR ] PID not found\n");
+    }
 }
 else if (compare(input, "tasks")) {
     struct task* list = get_tasks();
