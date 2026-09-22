@@ -9,6 +9,12 @@ build/kernel.o: kernel/kernel.c
 build/keyboard.o: kernel/keyboard.c
 	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/keyboard.c -o build/keyboard.o
 
+build/vfs.o: kernel/vfs.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/vfs.c -o build/vfs.o
+
+build/disk.o: kernel/disk.c
+	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/disk.c -o build/disk.o
+
 build/memory.o: kernel/memory.c
 	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/memory.c -o build/memory.o
 
@@ -45,11 +51,8 @@ build/syscall.o: kernel/syscall.c
 build/syscall_asm.o: kernel/syscall.asm
 	nasm -f elf32 kernel/syscall.asm -o build/syscall_asm.o
 
-build/vfs.o: kernel/vfs.c
-	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/vfs.c -o build/vfs.o
-
-build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o build/vfs.o linker.ld
-	ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o build/vfs.o
+build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o linker.ld
+	ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o
 
 iso: build/kernel.bin
 	mkdir -p build/isodir/boot/grub
@@ -58,7 +61,8 @@ iso: build/kernel.bin
 	grub-mkrescue -o build/ValaOS.iso build/isodir
 
 run: iso
-	qemu-system-i386 -cdrom build/ValaOS.iso -boot d
+	qemu-system-i386 -cdrom build/ValaOS.iso -hda build/ValaOS.img -boot d
 
 clean:
-	rm -rf build/*
+	rm -f build/*.o build/kernel.bin build/ValaOS.iso
+	rm -rf build/isodir

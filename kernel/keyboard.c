@@ -53,6 +53,10 @@ extern int vfs_cat(const char* name);
 extern int vfs_touch(const char* name);
 extern int vfs_write(const char* name, const char* text);
 extern int vfs_remove(const char* name);
+extern int vfs_mkdir(const char* name);
+extern int vfs_cd(const char* name);
+extern void vfs_pwd();
+extern int disk_test();
 unsigned char* video = (unsigned char*)0xB8000;
 
 char input[64];
@@ -304,6 +308,10 @@ void execute_command() {
         print("touch <file>\n");
         print("write <file> <text>\n");
         print("rm <file>\n");
+        print("mkdir <dir>\n");
+        print("cd <dir>\n");
+        print("pwd\n");
+        print("disktest\n");
        
     }
     else if (compare(input, "info")) {
@@ -575,6 +583,30 @@ else if (compare(input, "vmaptest")) {
 
     print("\nVirtual memory mapping test passed.\n");
 }
+else if (compare(input, "pwd")) {
+    vfs_pwd();
+}
+else if (starts_with(input, "mkdir ")) {
+    arg = command_argument(input, 6);
+
+    if (vfs_mkdir(arg)) {
+        print("[ VFS ] Directory created: ");
+        print(arg);
+        print("\n");
+    }
+    else {
+        print("[ VFS ] Unable to create directory\n");
+    }
+}
+else if (starts_with(input, "cd ")) {
+    arg = command_argument(input, 3);
+
+    if (!vfs_cd(arg))
+        print("[ VFS ] Directory not found\n");
+}
+else if (compare(input, "cd")) {
+    vfs_cd("/");
+}
 else if (compare(input, "ls")) {
     vfs_list();
 }
@@ -658,6 +690,9 @@ else if (compare(input, "uptime")) {
     print("Timer Ticks: ");
     print_number(ticks);
     print("\n");
+}
+else if (compare(input, "disktest")) {
+    disk_test();
 }
 else if (parse_kill_pid(input, &kill_pid)) {
     result = task_kill(kill_pid);
