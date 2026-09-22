@@ -16,4 +16,4 @@ page_fault_isr:
     popa
 
     add esp, 4
-    iretds
+    iretd

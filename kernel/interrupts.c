@@ -5,6 +5,7 @@ typedef unsigned int uint32_t;
 extern void timer_isr();
 extern void scheduler_tick();
 extern void syscall_isr();
+extern void page_fault_isr();
 
 struct idt_entry {
     uint16_t offset_low;
@@ -85,6 +86,7 @@ void interrupts_init() {
     }
 
     idt_set_gate(32, (uint32_t)timer_isr);
+    idt_set_gate(14, (uint32_t)page_fault_isr);
     idt_set_user_gate(0x80, (uint32_t)syscall_isr);
 
     idt_descriptor.limit = sizeof(idt) - 1;
