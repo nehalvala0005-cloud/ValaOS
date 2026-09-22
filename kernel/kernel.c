@@ -19,6 +19,7 @@ extern int map_page_flags(
 extern void enter_user_mode();
 extern void enter_user_program(unsigned int address);
 extern void user_task_start();
+extern int vfs_read_file(const char* name, char* buffer, int max_size);
 
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
@@ -32,6 +33,57 @@ static unsigned char user_test_page[4096]
 
 static unsigned char user_stack_page[4096]
     __attribute__((aligned(4096)));
+
+    static int hex_value(char c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+
+    return -1;
+}
+
+    int load_user_program(const char* name) {
+    static char hex_data[256];
+    int length;
+    int i;
+    int high;
+    int low;
+    int byte_count;
+
+    length = vfs_read_file(name, hex_data, sizeof(hex_data));
+
+    if (length <= 0)
+        return 0;
+
+    if (length % 2 != 0)
+        return 0;
+
+    byte_count = length / 2;
+
+    if (byte_count > 4096)
+        return 0;
+
+    for (i = 0; i < 4096; i++)
+        user_code_page[i] = 0;
+
+    for (i = 0; i < byte_count; i++) {
+        high = hex_value(hex_data[i * 2]);
+        low = hex_value(hex_data[i * 2 + 1]);
+
+        if (high < 0 || low < 0)
+            return 0;
+
+        user_code_page[i] =
+            (unsigned char)((high << 4) | low);
+    }
+
+    return 1;
+}
 
 void user_mode_init() {
 

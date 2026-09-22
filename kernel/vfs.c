@@ -522,3 +522,26 @@ void vfs_pwd() {
 
     print("\n");
 }
+int vfs_read_file(const char* name, char* buffer, int max_size) {
+    int index;
+    int i;
+
+    if (max_size <= 0)
+        return 0;
+
+    index = vfs_find_child(current_dir, name);
+
+    if (index < 0 || entries[index].is_dir)
+        return 0;
+
+    i = 0;
+
+    while (entries[index].data[i] && i < max_size - 1) {
+        buffer[i] = entries[index].data[i];
+        i++;
+    }
+
+    buffer[i] = '\0';
+
+    return i;
+}

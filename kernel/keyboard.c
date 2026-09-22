@@ -56,6 +56,7 @@ extern int vfs_remove(const char* name);
 extern int vfs_mkdir(const char* name);
 extern int vfs_cd(const char* name);
 extern void vfs_pwd();
+extern int load_user_program(const char* name);
 extern int disk_test();
 unsigned char* video = (unsigned char*)0xB8000;
 
@@ -757,8 +758,13 @@ else if (compare(input, "schedule")) {
 }
 else if (compare(input, "run hello")) {
     print("Starting user program: hello\n");
-    user_task_start();
-    enter_user_mode();
+
+    if (load_user_program("hello.bin")) {
+        user_task_start();
+        enter_user_mode();
+    } else {
+        print("[ ERROR ] Unable to load hello.bin\n");
+    }
 }
     else if (starts_with_echo(input)) {
         print(input + 5);
