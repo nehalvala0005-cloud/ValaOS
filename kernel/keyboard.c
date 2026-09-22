@@ -47,6 +47,12 @@ extern int set_page_flags(unsigned int virtual_address, unsigned int flags);
 extern void enable_write_protection();
 extern int task_kill(unsigned int pid);
 extern unsigned int get_timer_ticks();
+extern void vfs_init();
+extern void vfs_list();
+extern int vfs_cat(const char* name);
+extern int vfs_touch(const char* name);
+extern int vfs_write(const char* name, const char* text);
+extern int vfs_remove(const char* name);
 unsigned char* video = (unsigned char*)0xB8000;
 
 char input[64];
@@ -244,9 +250,27 @@ int parse_kill_pid(const char* str, unsigned int* pid) {
     return 1;
 }
 
+int starts_with(const char* str, const char* prefix) {
+    while (*prefix) {
+        if (*str != *prefix)
+            return 0;
+        str++;
+        prefix++;
+    }
+    return 1;
+}
+
+const char* command_argument(const char* str, int offset) {
+    while (str[offset] == ' ')
+        offset++;
+    return str + offset;
+}
+
 void execute_command() {
     unsigned int kill_pid;
     int result;
+    const char* arg;
+    const char* text;
 
     putchar('\n');
 
@@ -269,11 +293,17 @@ void execute_command() {
         print("vmaptest\n");
         print("memstress\n");
         print("ps\n");
+        print("uptime\n");
         print("kill <PID>\n");
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
         print("run hello\n");
+        print("ls\n");
+        print("cat <file>\n");
+        print("touch <file>\n");
+        print("write <file> <text>\n");
+        print("rm <file>\n");
        
     }
     else if (compare(input, "info")) {
@@ -545,6 +575,58 @@ else if (compare(input, "vmaptest")) {
 
     print("\nVirtual memory mapping test passed.\n");
 }
+else if (compare(input, "ls")) {
+    vfs_list();
+}
+else if (starts_with(input, "cat ")) {
+    arg = command_argument(input, 4);
+
+    if (!vfs_cat(arg))
+        print("[ VFS ] File not found\n");
+}
+else if (starts_with(input, "touch ")) {
+    arg = command_argument(input, 6);
+
+    if (vfs_touch(arg))
+        print("[ VFS ] File created\n");
+    else
+        print("[ VFS ] Unable to create file\n");
+}
+else if (starts_with(input, "write ")) {
+    int i = 6;
+
+    while (input[i] == ' ')
+        i++;
+
+    arg = input + i;
+
+    while (input[i] && input[i] != ' ')
+        i++;
+
+    if (!input[i]) {
+        print("[ VFS ] Usage: write <file> <text>\n");
+    }
+    else {
+        input[i] = '\0';
+        text = input + i + 1;
+
+        while (*text == ' ')
+            text++;
+
+        if (vfs_write(arg, text))
+            print("[ VFS ] File written\n");
+        else
+            print("[ VFS ] Unable to write file\n");
+    }
+}
+else if (starts_with(input, "rm ")) {
+    arg = command_argument(input, 3);
+
+    if (vfs_remove(arg))
+        print("[ VFS ] File removed\n");
+    else
+        print("[ VFS ] File not found\n");
+}
 else if (compare(input, "ps")) {
     struct task* list = get_tasks();
     int count = get_task_count();
@@ -565,6 +647,17 @@ else if (compare(input, "ps")) {
         print(list[i].state);
         print("\n");
     }
+}
+else if (compare(input, "uptime")) {
+    unsigned int ticks = get_timer_ticks();
+    unsigned int seconds = ticks / 100;
+
+    print("ValaOS Uptime: ");
+    print_number(seconds);
+    print(" seconds\n");
+    print("Timer Ticks: ");
+    print_number(ticks);
+    print("\n");
 }
 else if (parse_kill_pid(input, &kill_pid)) {
     result = task_kill(kill_pid);
@@ -654,6 +747,7 @@ else if (compare(input, "run hello")) {
 }
 
 void keyboard_init() {
+    vfs_init();
     input_pos = 0;
     input[0] = '\0';
 
