@@ -238,6 +238,7 @@ void execute_command() {
         print("vmtest\n");
         print("vmaptest\n");
         print("memstress\n");
+        print("ps\n");
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
@@ -513,6 +514,27 @@ else if (compare(input, "vmaptest")) {
 
     print("\nVirtual memory mapping test passed.\n");
 }
+else if (compare(input, "ps")) {
+    struct task* list = get_tasks();
+    int count = get_task_count();
+    int i;
+
+    print("PID   NAME      STATE\n");
+
+    for (i = 0; i < count; i++) {
+        if (list[i].pid == 1)
+            print("1     ");
+        else if (list[i].pid == 2)
+            print("2     ");
+        else if (list[i].pid == 3)
+            print("3     ");
+
+        print(list[i].name);
+        print("      ");
+        print(list[i].state);
+        print("\n");
+    }
+}
 else if (compare(input, "tasks")) {
     struct task* list = get_tasks();
     int count = get_task_count();
@@ -588,18 +610,28 @@ void keyboard_init() {
 }
 
 void keyboard_poll() {
+    static unsigned char key_down[128];
+
     if (!(inb(0x64) & 1))
         return;
 
     uint8_t scancode = inb(0x60);
+    uint8_t key_code = scancode & 0x7F;
 
-    if (scancode & 0x80)
+    if (scancode & 0x80) {
+        key_down[key_code] = 0;
+        return;
+    }
+
+    if (key_code >= sizeof(key_map))
         return;
 
-    if (scancode >= sizeof(key_map))
+    if (key_down[key_code])
         return;
 
-    char c = key_map[scancode];
+    key_down[key_code] = 1;
+
+    char c = key_map[key_code];
 
     if (c == '\b') {
         if (input_pos > 0 && col > 0) {
