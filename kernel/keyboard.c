@@ -45,6 +45,7 @@ extern int virtual_to_physical(unsigned int virtual_address, unsigned int* physi
 extern unsigned int get_page_flags(unsigned int virtual_address);
 extern int set_page_flags(unsigned int virtual_address, unsigned int flags);
 extern void enable_write_protection();
+extern int task_kill(unsigned int pid);
 extern unsigned int get_timer_ticks();
 unsigned char* video = (unsigned char*)0xB8000;
 
@@ -239,6 +240,7 @@ void execute_command() {
         print("vmaptest\n");
         print("memstress\n");
         print("ps\n");
+        print("kill 3\n");
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
@@ -534,6 +536,16 @@ else if (compare(input, "ps")) {
         print(list[i].state);
         print("\n");
     }
+}
+else if (compare(input, "kill 3")) {
+    int result = task_kill(3);
+
+    if (result == 1)
+        print("[ TASK ] PID 3 terminated\n");
+    else if (result == -2)
+        print("[ TASK ] PID 3 already terminated\n");
+    else
+        print("[ ERROR ] Unable to terminate PID 3\n");
 }
 else if (compare(input, "tasks")) {
     struct task* list = get_tasks();

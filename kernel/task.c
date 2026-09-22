@@ -131,16 +131,50 @@ int get_task_count() {
     return task_count;
 }
 
-void schedule_once() {
+int task_kill(uint32_t pid) {
     int i;
 
-    current_task++;
+    if (pid == 1 || pid == 2) {
+        return -1;
+    }
 
-    if (current_task >= 2)
-        current_task = 0;
+    for (i = 0; i < task_count; i++) {
+        if (tasks[i].pid == pid) {
+            if (tasks[i].state == TASK_TERMINATED) {
+                return -2;
+            }
 
-    for (i = 0; i < task_count; i++)
-        tasks[i].state = TASK_READY;
+            tasks[i].state = TASK_TERMINATED;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void schedule_once() {
+    int i;
+    int next_task = current_task;
+
+    for (i = 1; i <= 2; i++) {
+        next_task = current_task + i;
+
+        if (next_task >= 2)
+            next_task = 0;
+
+        if (tasks[next_task].state != TASK_TERMINATED)
+            break;
+    }
+
+    if (tasks[next_task].state == TASK_TERMINATED)
+        return;
+
+    current_task = next_task;
+
+    for (i = 0; i < task_count; i++) {
+        if (tasks[i].state != TASK_TERMINATED)
+            tasks[i].state = TASK_READY;
+    }
 
     tasks[current_task].state = TASK_RUNNING;
 }
