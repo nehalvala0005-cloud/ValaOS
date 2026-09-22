@@ -45,7 +45,7 @@ void page_fault_init() {
 
     for (i = 0; i < 256; i++) {
         idt[i].offset_low = 0;
-        idt[i].selector = 0;
+        idt[i].selector = 0x10;
         idt[i].zero = 0;
         idt[i].flags = 0;
         idt[i].offset_high = 0;
