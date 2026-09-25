@@ -545,3 +545,43 @@ int vfs_read_file(const char* name, char* buffer, int max_size) {
 
     return i;
 }
+void vfs_list_programs() {
+    int i;
+    int j;
+    int length;
+    int found = 0;
+    char name[VFS_NAME_SIZE];
+
+    print("PROGRAMS\n");
+
+    for (i = 0; i < VFS_MAX_ENTRIES; i++) {
+        if (!entries[i].used || entries[i].is_dir)
+            continue;
+
+        length = 0;
+
+        while (entries[i].name[length] != '\0')
+            length++;
+
+        if (length < 4)
+            continue;
+
+        if (entries[i].name[length - 4] != '.' ||
+            entries[i].name[length - 3] != 'b' ||
+            entries[i].name[length - 2] != 'i' ||
+            entries[i].name[length - 1] != 'n')
+            continue;
+
+        for (j = 0; j < length - 4; j++)
+            name[j] = entries[i].name[j];
+
+        name[length - 4] = '\0';
+
+        print(name);
+        print("\n");
+        found = 1;
+    }
+
+    if (!found)
+        print("No programs found.\n");
+}

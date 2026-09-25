@@ -1,5 +1,28 @@
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+
+struct task {
+    uint32_t pid;
+    const char* name;
+    const char* state;
+    uint32_t stack_base;
+    uint32_t stack_top;
+    struct {
+        uint32_t edi;
+        uint32_t esi;
+        uint32_t ebp;
+        uint32_t esp;
+        uint32_t ebx;
+        uint32_t edx;
+        uint32_t ecx;
+        uint32_t eax;
+        uint32_t eip;
+        uint32_t cs;
+        uint32_t eflags;
+    } context;
+};
+
 
 extern void* kmalloc(unsigned int size);
 extern void kfree(void* address);
@@ -7,28 +30,6 @@ extern unsigned int memory_used();
 extern unsigned int memory_free();
 extern void enter_user_mode();
 extern void user_task_start();
-
-struct task_context {
-    unsigned int eax;
-    unsigned int ecx;
-    unsigned int edx;
-    unsigned int ebx;
-    unsigned int esp;
-    unsigned int ebp;
-    unsigned int esi;
-    unsigned int edi;
-    unsigned int eip;
-    unsigned int cs;
-    unsigned int eflags;
-};
-struct task {
-    unsigned int pid;
-    const char* name;
-    const char* state;
-    unsigned int stack_base;
-    unsigned int stack_top;
-    struct task_context context;
-};
 
 extern struct task* get_tasks();
 extern int get_task_count();
@@ -50,6 +51,8 @@ extern unsigned int get_timer_ticks();
 extern void vfs_init();
 extern void vfs_list();
 extern int vfs_cat(const char* name);
+extern void vfs_list_programs();
+extern int vfs_read_file(const char* name, char* buffer, int max_size);
 extern int vfs_touch(const char* name);
 extern int vfs_write(const char* name, const char* text);
 extern int vfs_remove(const char* name);
@@ -270,6 +273,83 @@ const char* command_argument(const char* str, int offset) {
         offset++;
     return str + offset;
 }
+void selftest() {
+    int passed = 0;
+    int failed = 0;
+    char buffer[64];
+
+    print("\n========== ValaOS 2.0 SELF TEST ==========\n\n");
+
+    if (memory_total_pages() > 0 && memory_page_size() == 4096) {
+        print("[ OK ] Memory\n");
+        passed++;
+    } else {
+        print("[FAIL] Memory\n");
+        failed++;
+    }
+
+    if (paging_enabled()) {
+        print("[ OK ] Paging\n");
+        passed++;
+    } else {
+        print("[FAIL] Paging\n");
+        failed++;
+    }
+
+    if (disk_test()) {
+        print("[ OK ] Disk\n");
+        passed++;
+    } else {
+        print("[FAIL] Disk\n");
+        failed++;
+    }
+
+    if (memory_used_pages() >= 0) {
+        print("[ OK ] Virtual Memory\n");
+        passed++;
+    } else {
+        print("[FAIL] Virtual Memory\n");
+        failed++;
+    }
+
+    if (get_task_count() >= 3) {
+        print("[ OK ] Scheduler\n");
+        passed++;
+    } else {
+        print("[FAIL] Scheduler\n");
+        failed++;
+    }
+
+    if (load_user_program("hello.bin")) {
+        print("[ OK ] Program Loader\n");
+        passed++;
+    } else {
+        print("[FAIL] Program Loader\n");
+        failed++;
+    }
+
+    if (vfs_read_file("hello.bin", buffer, sizeof(buffer)) > 0) {
+        print("[ OK ] VFS\n");
+        passed++;
+    } else {
+        print("[FAIL] VFS\n");
+        failed++;
+    }
+
+    print("\n===========================================\n");
+    print("Passed: ");
+    print_number(passed);
+    print("\nFailed: ");
+    print_number(failed);
+    print("\n");
+
+    if (failed == 0)
+        print("SYSTEM STATUS: OK\n");
+    else
+        print("SYSTEM STATUS: CHECK FAILED\n");
+
+    print("===========================================\n");
+}
 
 void execute_command() {
     unsigned int kill_pid;
@@ -292,6 +372,7 @@ void execute_command() {
         print("memtest\n");
         print("meminfo\n");
         print("paging\n");
+        print("selftest\n");
         print("ptest\n");
         print("dptest\n");
         print("vmtest\n");
@@ -316,7 +397,7 @@ void execute_command() {
        
     }
     else if (compare(input, "info")) {
-        print("ValaOS v0.7\n");
+        print("ValaOS 2.0\n");
         print("Architecture: x86\n");
         print("Keyboard: PS/2 Polling\n");
         print("Kernel: Custom\n");
@@ -330,7 +411,7 @@ void execute_command() {
         clear_screen();
     }
     else if (compare(input, "version")) {
-        print("ValaOS v0.7\n");
+        print("ValaOS 2.0\n");
         print("Architecture: x86\n");
         print("Shell: ValaShell\n");
     }
@@ -427,6 +508,9 @@ else if (compare(input, "paging")) {
         print("Paging Status : DISABLED\n");
         print("Status         : Error\n");
     }
+}
+else if (compare(input, "selftest")) {
+    selftest();
 }
 else if (compare(input, "ptest")) {
     unsigned int virtual_address = 0x00E00000;
@@ -611,6 +695,9 @@ else if (compare(input, "cd")) {
 else if (compare(input, "ls")) {
     vfs_list();
 }
+else if (starts_with(input, "programs")) {
+    vfs_list_programs();
+}
 else if (starts_with(input, "cat ")) {
     arg = command_argument(input, 4);
 
@@ -756,14 +843,57 @@ else if (compare(input, "schedule")) {
 
     print("Scheduler cycle complete.\n");
 }
-else if (compare(input, "run hello")) {
-    print("Starting user program: hello\n");
+else if (starts_with(input, "run ")) {
+    char program_name[32];
+    char file_name[40];
+    int i = 4;
+    int j = 0;
 
-    if (load_user_program("hello.bin")) {
-        user_task_start();
-        enter_user_mode();
+    while (input[i] == ' ')
+        i++;
+
+    if (input[i] == '\0') {
+        print("[ ERROR ] Usage: run <program>\n");
     } else {
-        print("[ ERROR ] Unable to load hello.bin\n");
+        while (input[i] != '\0' &&
+               input[i] != ' ' &&
+               j < 31) {
+            program_name[j] = input[i];
+            i++;
+            j++;
+        }
+
+        program_name[j] = '\0';
+
+        if (input[i] != '\0') {
+            print("[ ERROR ] Invalid program name\n");
+        } else {
+            i = 0;
+
+            while (program_name[i] != '\0' && i < 31) {
+                file_name[i] = program_name[i];
+                i++;
+            }
+
+            file_name[i++] = '.';
+            file_name[i++] = 'b';
+            file_name[i++] = 'i';
+            file_name[i++] = 'n';
+            file_name[i] = '\0';
+
+            print("Starting user program: ");
+            print(program_name);
+            print("\n");
+
+            if (load_user_program(file_name)) {
+                user_task_start();
+                enter_user_mode();
+            } else {
+                print("[ ERROR ] Unable to load ");
+                print(file_name);
+                print("\n");
+            }
+        }
     }
 }
     else if (starts_with_echo(input)) {
