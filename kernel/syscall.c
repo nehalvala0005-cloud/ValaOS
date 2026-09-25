@@ -1,3 +1,9 @@
+/*
+ * ValaOS
+ * Copyright (c) 2026 Nehal Vala
+ * All rights reserved.
+ */
+
 extern void print(const char* str);
 extern void user_task_exit();
 

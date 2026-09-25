@@ -1121,3 +1121,26 @@ Connect it with the kernel.
 Build the next subsystem.
 
 ValaOS — Built from scratch, one subsystem at a time.
+
+
+## Copyright
+
+Copyright © 2026 Nehal Vala. All rights reserved.
+
+ValaOS is an original operating-system development project created by
+Nehal Vala.
+
+The source code and documentation are publicly available for educational
+and review purposes. Reproduction, redistribution, or use of substantial
+portions of this project in another project is not permitted without
+prior written permission from the copyright holder.
+
+### Author
+
+**Nehal Vala**
+
+GitHub:  
+https://github.com/nehalvala0005-cloud
+
+Repository:  
+https://github.com/nehalvala0005-cloud/ValaOS

@@ -1,4 +1,10 @@
-extern void print(const char* str);
+/*
+ * ValaOS
+ * Copyright (c) 2026 Nehal Vala
+ * All rights reserved.
+ */
+
+ extern void print(const char* str);
 
 typedef unsigned int uint32_t;
 

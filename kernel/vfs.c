@@ -1,4 +1,10 @@
-typedef unsigned char uint8_t;
+/*
+ * ValaOS
+ * Copyright (c) 2026 Nehal Vala
+ * All rights reserved.
+ */
+
+ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 

@@ -1,4 +1,10 @@
-typedef unsigned int uint32_t;
+/*
+ * ValaOS
+ * Copyright (c) 2026 Nehal Vala
+ * All rights reserved.
+ */
+
+ typedef unsigned int uint32_t;
 
 #define PAGE_SIZE 4096
 #define INITIAL_PAGE_TABLES 4

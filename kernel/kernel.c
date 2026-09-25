@@ -1,3 +1,9 @@
+/*
+ * ValaOS
+ * Copyright (c) 2026 Nehal Vala
+ * All rights reserved.
+ */
+
 extern void keyboard_init();
 extern void keyboard_poll();
 extern void clear_screen();
