@@ -1,0 +1,908 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: #030405;
+    color: #ffffff;
+    overflow-x: hidden;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* =========================
+   NAVBAR
+========================= */
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72px;
+    padding: 0 6%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 100;
+    background: rgba(5, 6, 8, 0.65);
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand {
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.brand span,
+.hero h1 span {
+    color: #ff3344;
+}
+
+.nav-links {
+    display: flex;
+    gap: 30px;
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.nav-links a {
+    color: #9a9fa8;
+    transition: 0.25s;
+}
+
+.nav-links a:hover {
+    color: #ffffff;
+}
+
+/* =========================
+   3D CANVAS
+========================= */
+
+#valaos-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* =========================
+   MAIN SECTIONS
+========================= */
+
+.hero,
+.content-section,
+.terminal-section,
+.status-section,
+.download-section,
+footer {
+    position: relative;
+    z-index: 2;
+}
+
+.hero {
+    min-height: 100vh;
+    background: transparent;
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+        radial-gradient(
+            circle at center,
+            transparent 15%,
+            rgba(5, 6, 8, 0.15) 50%,
+            #050608 100%
+        );
+}
+
+/* =========================
+   HERO
+========================= */
+
+.hero-overlay {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    padding-left: 8%;
+    padding-right: 8%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.status-line {
+    color: #76c893;
+    font-size: 12px;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+}
+
+.hero h1 {
+    font-size: clamp(75px, 12vw, 160px);
+    line-height: 0.9;
+    letter-spacing: -7px;
+    color: #ffffff;
+}
+
+.hero h2 {
+    margin-top: 30px;
+    font-size: clamp(22px, 3vw, 38px);
+    max-width: 700px;
+    font-weight: 400;
+    color: #d0d3d8;
+}
+
+.hero-overlay > p {
+    margin-top: 18px;
+    color: #858b94;
+    font-size: 18px;
+}
+
+.tech-stack {
+    margin-top: 22px;
+    color: #8b919a;
+    font-size: 12px;
+    letter-spacing: 2px;
+}
+
+.tech-stack span {
+    color: #ff3344;
+    padding: 0 8px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 14px;
+    margin-top: 38px;
+    pointer-events: auto;
+}
+
+.btn {
+    padding: 14px 24px;
+    border: 1px solid #454a52;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: 0.25s;
+}
+
+.btn.primary {
+    background: #ffffff;
+    color: #050608;
+    border-color: #ffffff;
+}
+
+.btn.primary:hover {
+    background: #ff3344;
+    border-color: #ff3344;
+    color: #ffffff;
+}
+
+.btn.secondary {
+    color: #ffffff;
+}
+
+.btn.secondary:hover {
+    border-color: #ff3344;
+    color: #ff3344;
+}
+
+.hero-version {
+    position: absolute;
+    z-index: 3;
+    right: 6%;
+    bottom: 35px;
+    color: #555b64;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+/* =========================
+   GENERAL SECTIONS
+========================= */
+
+.content-section,
+.terminal-section,
+.status-section,
+.download-section {
+    padding: 140px 8%;
+    max-width: 1400px;
+    margin: auto;
+}
+
+.section-number {
+    color: #ff3344;
+    font-size: 11px;
+    letter-spacing: 3px;
+}
+
+.content-section h2,
+.terminal-section h2,
+.status-section h2,
+.download-section h2 {
+    margin-top: 14px;
+    margin-bottom: 35px;
+    font-size: clamp(42px, 6vw, 78px);
+    letter-spacing: -3px;
+}
+
+.content-section > p {
+    max-width: 850px;
+    color: #8d939c;
+    font-size: 18px;
+    line-height: 1.9;
+    margin-bottom: 20px;
+}
+
+/* =========================
+   FEATURE CARDS
+========================= */
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.feature-card {
+    min-height: 220px;
+    padding: 30px;
+    background: rgba(11, 13, 16, 0.92);
+    border: 1px solid #20242a;
+    transition: 0.3s;
+}
+
+.feature-card:hover {
+    transform: translateY(-6px);
+    border-color: #ff3344;
+}
+
+.feature-card > span {
+    color: #555b64;
+    font-size: 12px;
+}
+
+.feature-card h3 {
+    margin-top: 35px;
+    font-size: 24px;
+}
+
+.feature-card p {
+    margin-top: 12px;
+    color: #858b94;
+    line-height: 1.7;
+}
+
+/* =========================
+   ARCHITECTURE
+========================= */
+
+.architecture-section {
+    text-align: center;
+}
+
+.architecture-flow {
+    max-width: 600px;
+    margin: 50px auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+.architecture-flow div {
+    padding: 18px;
+    border: 1px solid #272c32;
+    background: rgba(10, 12, 15, 0.92);
+    letter-spacing: 2px;
+    font-size: 13px;
+    transition: 0.3s;
+}
+
+.architecture-flow div:hover {
+    border-color: #ff3344;
+    transform: scale(1.02);
+}
+
+.architecture-flow i {
+    color: #ff3344;
+    font-style: normal;
+}
+
+/* =========================
+   TERMINAL
+========================= */
+
+.terminal-section {
+    max-width: 1100px;
+}
+
+.terminal {
+    border: 1px solid #292e35;
+    background: rgba(8, 10, 13, 0.94);
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.5);
+}
+
+.terminal-top {
+    padding: 15px 20px;
+    border-bottom: 1px solid #20242a;
+    color: #666d76;
+    font-size: 12px;
+}
+
+.terminal-top span {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #454a52;
+    margin-right: 6px;
+}
+
+.terminal-body {
+    padding: 35px;
+    min-height: 330px;
+    font-family: monospace;
+    line-height: 2;
+    color: #9da3ac;
+}
+
+.terminal-body b {
+    color: #ffffff;
+}
+
+.success {
+    color: #76c893;
+}
+
+.cursor {
+    display: inline-block;
+    width: 8px;
+    height: 17px;
+    background: #ff3344;
+    vertical-align: middle;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* =========================
+   SELF TEST
+========================= */
+
+.status {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.status div {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 25px;
+    background: rgba(11, 13, 16, 0.92);
+    border: 1px solid #20242a;
+}
+
+.status strong {
+    color: #76c893;
+}
+
+.system-ok {
+    margin-top: 30px;
+    text-align: center;
+    padding: 22px;
+    border: 1px solid #31553c;
+    color: #76c893;
+    letter-spacing: 3px;
+    font-size: 13px;
+}
+
+/* =========================
+   DOWNLOAD
+========================= */
+
+.download-section {
+    max-width: none;
+    text-align: center;
+    border-top: 1px solid #20242a;
+    border-bottom: 1px solid #20242a;
+}
+
+.download-section p {
+    max-width: 650px;
+    margin: 0 auto 35px;
+    color: #8d939c;
+    line-height: 1.8;
+}
+
+.download-button {
+    display: inline-block;
+    padding: 18px 32px;
+    background: #ffffff;
+    color: #050608;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    transition: 0.25s;
+}
+
+.download-button:hover {
+    background: #ff3344;
+    color: #ffffff;
+}
+
+.release-info {
+    margin-top: 22px;
+    color: #555b64;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+footer {
+    padding: 60px 8%;
+    text-align: center;
+    color: #666d76;
+}
+
+.footer-logo {
+    color: #ffffff;
+    font-size: 25px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+footer a {
+    display: inline-block;
+    margin-top: 15px;
+    color: #999fa8;
+}
+
+/* =========================
+   SCROLL REVEAL
+========================= */
+
+.reveal {
+    opacity: 0;
+    transform: translateY(50px);
+    transition:
+        opacity 0.8s ease,
+        transform 0.8s ease;
+}
+
+.reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 800px) {
+
+    .nav-links {
+        display: none;
+    }
+
+    .hero-overlay {
+        padding: 0 7%;
+    }
+
+    .hero h1 {
+        font-size: 80px;
+        letter-spacing: -4px;
+    }
+
+    .hero h2 {
+        font-size: 24px;
+    }
+
+    .hero-overlay > p {
+        font-size: 15px;
+    }
+
+    .hero-buttons {
+        flex-wrap: wrap;
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .status {
+        grid-template-columns: 1fr;
+    }
+
+    .content-section,
+    .terminal-section,
+    .status-section,
+    .download-section {
+        padding: 100px 7%;
+    }
+
+    .content-section h2,
+    .terminal-section h2,
+    .status-section h2,
+    .download-section h2 {
+        font-size: 48px;
+    }
+
+    .terminal-body {
+        padding: 22px;
+        min-height: 280px;
+        font-size: 12px;
+        overflow-x: auto;
+    }
+}
+
+/* =========================================
+   MOBILE RESPONSIVE
+========================================= */
+
+@media (max-width: 768px) {
+
+    html {
+        overflow-x: hidden;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+
+    /* 3D background */
+    #valaos-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        opacity: 0.42;
+        pointer-events: none;
+    }
+
+    /* Navbar */
+    nav {
+        height: 64px;
+        padding: 0 18px;
+    }
+
+    nav .logo,
+    .navbar-logo {
+        font-size: 20px;
+    }
+
+    nav ul {
+        gap: 12px;
+    }
+
+    nav ul li a {
+        font-size: 11px;
+    }
+
+    /* Hero */
+    .hero {
+        min-height: 100vh;
+        height: auto;
+        padding: 110px 22px 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: left;
+    }
+
+    .hero-content {
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+        z-index: 5;
+    }
+
+    .hero h1 {
+        font-size: clamp(48px, 15vw, 76px);
+        line-height: 0.95;
+        margin-bottom: 22px;
+        word-break: normal;
+    }
+
+    .hero h2 {
+        font-size: 22px;
+        line-height: 1.25;
+        max-width: 340px;
+    }
+
+    .hero p {
+        font-size: 14px;
+        line-height: 1.65;
+        max-width: 340px;
+    }
+
+    .hero .tech-stack {
+        font-size: 11px;
+        line-height: 1.8;
+        letter-spacing: 0.5px;
+    }
+
+    .hero-buttons {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        width: 100%;
+        max-width: 300px;
+        margin-top: 25px;
+    }
+
+    .hero-buttons a,
+    .hero button {
+        width: 100%;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    /* General sections */
+    .content-section,
+    .terminal-section,
+    .status-section,
+    .download-section {
+        width: calc(100% - 32px);
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+    }
+
+    .content-section {
+        padding: 55px 18px;
+    }
+
+    .content-section h2,
+    .terminal-section h2,
+    .status-section h2,
+    .download-section h2 {
+        font-size: 28px;
+        line-height: 1.15;
+    }
+
+    .content-section p {
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    /* Feature cards */
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .feature-card {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 22px;
+    }
+
+    .feature-card h3 {
+        font-size: 18px;
+    }
+
+    .feature-card p {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    /* Architecture */
+    .architecture-flow {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .architecture-flow div {
+        width: min(100%, 280px);
+        box-sizing: border-box;
+        text-align: center;
+    }
+
+    /* Terminal */
+    .terminal-section {
+        padding: 45px 14px;
+    }
+
+    .terminal-body {
+        width: 100%;
+        max-width: 100%;
+        min-height: 300px;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow-x: auto;
+        overflow-y: hidden;
+        font-size: 11px;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    /* Status */
+    .status {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .status div {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Download */
+    .download-section {
+        padding: 55px 18px;
+        text-align: center;
+    }
+
+    .download-section a,
+    .download-section button {
+        max-width: 300px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Footer */
+    footer {
+        padding: 35px 18px;
+        text-align: center;
+        font-size: 11px;
+    }
+}
+
+
+/* =========================================
+   SMALL PHONES
+========================================= */
+
+@media (max-width: 480px) {
+
+    nav {
+        padding: 0 14px;
+    }
+
+    nav ul {
+        gap: 8px;
+    }
+
+    nav ul li a {
+        font-size: 9px;
+    }
+
+    .hero {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .hero h1 {
+        font-size: clamp(44px, 17vw, 64px);
+    }
+
+    .hero h2 {
+        font-size: 20px;
+    }
+
+    .hero p {
+        font-size: 13px;
+    }
+
+    .hero .tech-stack {
+        font-size: 10px;
+    }
+
+    .hero-buttons {
+        max-width: 270px;
+    }
+
+    .content-section,
+    .terminal-section,
+    .status-section,
+    .download-section {
+        width: calc(100% - 24px);
+    }
+
+    .content-section {
+        padding: 45px 14px;
+    }
+
+    .content-section h2,
+    .terminal-section h2,
+    .status-section h2,
+    .download-section h2 {
+        font-size: 25px;
+    }
+
+    .terminal-body {
+        font-size: 10px;
+        padding: 14px;
+    }
+
+    #valaos-canvas {
+        opacity: 0.30;
+    }
+}
+
+
+/* =========================================
+   VERY SMALL PHONES
+========================================= */
+
+@media (max-width: 360px) {
+
+    nav {
+        height: 58px;
+    }
+
+    nav ul {
+        gap: 5px;
+    }
+
+    nav ul li a {
+        font-size: 8px;
+    }
+
+    .hero {
+        padding-top: 95px;
+    }
+
+    .hero h1 {
+        font-size: 43px;
+    }
+
+    .hero h2 {
+        font-size: 18px;
+    }
+
+    .hero-buttons {
+        max-width: 100%;
+    }
+}
+
+
+/* =========================================
+   REDUCE MOTION
+========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

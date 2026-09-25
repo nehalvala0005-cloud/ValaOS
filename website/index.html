@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>ValaOS 2.0 — Custom 32-Bit x86 Operating System</title>
+
+    <meta
+        name="description"
+        content="ValaOS 2.0 is a custom 32-bit x86 operating system built from scratch using C, x86 Assembly, GRUB and QEMU."
+    >
+
+    <meta
+        name="keywords"
+        content="ValaOS, operating system, custom OS, x86 OS, 32-bit OS, C, Assembly, GRUB, QEMU, kernel, ValaOS 2.0"
+    >
+
+    <meta
+        name="author"
+        content="Nehal Vala"
+    >
+
+    <meta
+        name="robots"
+        content="index, follow"
+    >
+
+    <meta
+        name="theme-color"
+        content="#030405"
+    >
+
+    <!-- Open Graph -->
+
+    <meta
+        property="og:title"
+        content="ValaOS 2.0 — Custom 32-Bit x86 Operating System"
+    >
+
+    <meta
+        property="og:description"
+        content="Explore ValaOS 2.0 — a custom 32-bit x86 operating system with memory management, paging, interrupts, scheduling, Ring 3 user mode, system calls and a persistent VFS."
+    >
+
+    <meta
+        property="og:type"
+        content="website"
+    >
+
+    <meta
+        property="og:site_name"
+        content="ValaOS"
+    >
+
+    <!-- Browser / Mobile -->
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="ValaOS"
+    >
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
+
+    <!-- Favicon -->
+
+   <link
+    rel="icon"
+    type="image/svg+xml"
+    href="assets/images/logo/valaos.svg"
+>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+<body>
+
+    <!-- =========================
+         NAVBAR
+    ========================== -->
+
+    <nav class="navbar">
+
+        <a
+            href="#home"
+            class="brand"
+        >
+            VALA<span>OS</span>
+        </a>
+
+        <div class="nav-links">
+
+            <a href="#about">
+                About
+            </a>
+
+            <a href="#features">
+                Features
+            </a>
+
+            <a href="#architecture">
+                Architecture
+            </a>
+
+            <a href="#download">
+                Download
+            </a>
+
+        </div>
+
+    </nav>
+
+
+    <!-- =========================
+         3D CANVAS
+    ========================== -->
+
+    <canvas id="valaos-canvas"></canvas>
+
+
+    <!-- =========================
+         HERO
+    ========================== -->
+
+    <section
+        class="hero"
+        id="home"
+    >
+
+        <div class="hero-overlay">
+
+            <div class="status-line">
+                SYSTEM BOOTING
+            </div>
+
+            <h1>
+                Vala<span>OS</span>
+            </h1>
+
+            <h2>
+                A Custom 32-Bit x86 Operating System
+            </h2>
+
+            <p>
+                Built from scratch using C and x86 Assembly.
+            </p>
+
+            <div class="tech-stack">
+
+                C
+
+                <span>•</span>
+
+                x86 ASSEMBLY
+
+                <span>•</span>
+
+                GRUB
+
+                <span>•</span>
+
+                QEMU
+
+            </div>
+
+            <div class="hero-buttons">
+
+                <a
+                    href="#about"
+                    class="btn primary"
+                >
+                    EXPLORE SYSTEM
+                </a>
+
+                <a
+                    href="#download"
+                    class="btn secondary"
+                >
+                    DOWNLOAD ValaOS
+                </a>
+
+            </div>
+
+        </div>
+
+        <div class="hero-version">
+            ValaOS 2.0.0
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         ABOUT
+    ========================== -->
+
+    <section
+        class="content-section"
+        id="about"
+    >
+
+        <div class="section-number">
+            01 / SYSTEM
+        </div>
+
+        <h2>
+            Built From Scratch.
+        </h2>
+
+        <p>
+            ValaOS is a custom 32-bit x86 operating system
+            developed from the ground up using C and x86
+            Assembly.
+        </p>
+
+        <p>
+            The project explores low-level operating system
+            concepts including booting, protected mode,
+            memory management, paging, interrupts,
+            scheduling, user-mode execution, system calls
+            and persistent storage.
+        </p>
+
+    </section>
+
+
+    <!-- =========================
+         FEATURES
+    ========================== -->
+
+    <section
+        class="content-section"
+        id="features"
+    >
+
+        <div class="section-number">
+            02 / FEATURES
+        </div>
+
+        <h2>
+            System Capabilities
+        </h2>
+
+        <div class="feature-grid">
+
+            <div class="feature-card">
+
+                <span>01</span>
+
+                <h3>
+                    Memory Management
+                </h3>
+
+                <p>
+                    Physical memory tracking,
+                    allocation and memory statistics.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>02</span>
+
+                <h3>
+                    Paging
+                </h3>
+
+                <p>
+                    Virtual memory mapping and
+                    x86 page permission handling.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>03</span>
+
+                <h3>
+                    Interrupts
+                </h3>
+
+                <p>
+                    Hardware and software interrupt
+                    handling through the IDT.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>04</span>
+
+                <h3>
+                    Hardware Timer
+                </h3>
+
+                <p>
+                    Timer-driven system ticks used
+                    by the scheduler.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>05</span>
+
+                <h3>
+                    Task Scheduler
+                </h3>
+
+                <p>
+                    PID-based task management and
+                    timer-driven context switching.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>06</span>
+
+                <h3>
+                    Ring 3 User Mode
+                </h3>
+
+                <p>
+                    User programs execute outside
+                    kernel privilege level.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>07</span>
+
+                <h3>
+                    System Calls
+                </h3>
+
+                <p>
+                    User programs communicate with
+                    the kernel through system calls.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>08</span>
+
+                <h3>
+                    Persistent VFS
+                </h3>
+
+                <p>
+                    Files and directories are stored
+                    on persistent disk-backed storage.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <span>09</span>
+
+                <h3>
+                    Program Loader
+                </h3>
+
+                <p>
+                    User programs are loaded directly
+                    from the ValaOS filesystem.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         ARCHITECTURE
+    ========================== -->
+
+    <section
+        class="content-section architecture-section"
+        id="architecture"
+    >
+
+        <div class="section-number">
+            03 / ARCHITECTURE
+        </div>
+
+        <h2>
+            System Architecture
+        </h2>
+
+        <p>
+            From bootloader to user programs,
+            every major layer is implemented as
+            part of ValaOS.
+        </p>
+
+        <div class="architecture-flow">
+
+            <div>
+                GRUB
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                BOOTLOADER
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                PROTECTED MODE
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                KERNEL
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                MEMORY MANAGEMENT
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                PAGING
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                INTERRUPTS + TIMER
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                TASK SCHEDULER
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                RING 3 USER MODE
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                SYSTEM CALLS
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                VIRTUAL FILESYSTEM
+            </div>
+
+            <i>↓</i>
+
+            <div>
+                USER PROGRAMS
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         TERMINAL
+    ========================== -->
+
+    <section
+        class="terminal-section"
+        id="demo"
+    >
+
+        <div class="section-number">
+            04 / LIVE SYSTEM
+        </div>
+
+        <h2>
+            ValaOS Terminal
+        </h2>
+
+        <div class="terminal">
+
+            <div class="terminal-top">
+
+                <span></span>
+                <span></span>
+                <span></span>
+
+                ValaOS Terminal
+
+            </div>
+
+            <div class="terminal-body"></div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         SELF TEST
+    ========================== -->
+
+    <section
+        class="status-section"
+        id="status"
+    >
+
+        <div class="section-number">
+            05 / VALIDATION
+        </div>
+
+        <h2>
+            System Self-Test
+        </h2>
+
+        <div class="status">
+
+            <div>
+                <span>Memory</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>Paging</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>Disk</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>Virtual Memory</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>Scheduler</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>Program Loader</span>
+                <strong>PASS</strong>
+            </div>
+
+            <div>
+                <span>VFS</span>
+                <strong>PASS</strong>
+            </div>
+
+        </div>
+
+        <div class="system-ok">
+            PASSED: 7 &nbsp;&nbsp; | &nbsp;&nbsp;
+            FAILED: 0
+            <br><br>
+            SYSTEM STATUS: OK
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         DOWNLOAD
+    ========================== -->
+
+    <section
+        class="download-section"
+        id="download"
+    >
+
+        <div class="section-number">
+            06 / RELEASE
+        </div>
+
+        <h2>
+            Get ValaOS 2.0
+        </h2>
+
+        <p>
+            Download the ValaOS 2.0 ISO and explore
+            the custom 32-bit x86 operating system.
+        </p>
+
+        <a
+            href="downloads/ValaOS-2.0.0.iso"
+            class="download-button"
+            download
+        >
+            DOWNLOAD ValaOS 2.0.0
+        </a>
+
+        <div class="release-info">
+            32-BIT x86 &nbsp; • &nbsp;
+            ValaOS 2.0.0 &nbsp; • &nbsp;
+            ISO
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
+    <footer>
+
+        <div class="footer-logo">
+            VALA<span style="color:#ff3344;">OS</span>
+        </div>
+
+        <p>
+            A custom operating system built from scratch.
+        </p>
+
+        <a
+            href="https://github.com/nehalvala0005-cloud/ValaOS"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            View Source on GitHub
+        </a>
+
+    </footer>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script
+        type="module"
+        src="js/main.js"
+    ></script>
+
+</body>
+
+</html>
