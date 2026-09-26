@@ -7,6 +7,12 @@ The project focuses on understanding how operating systems work internally by im
 
 > **ValaOS is not built to replace modern operating systems. It is built to understand them.**
 
+🌐 **Website:**  
+https://nehalvala0005-cloud.github.io/ValaOS/
+
+💿 **Download ValaOS 2.0:**  
+https://nehalvala0005-cloud.github.io/ValaOS/downloads/ValaOS-2.0.0.iso
+
 ---
 
 # What is ValaOS?
