@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nehalvala0005-cloud.github.io/ValaOS/sitemap.xml
