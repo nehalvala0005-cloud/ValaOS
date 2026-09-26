@@ -1,3 +1,4 @@
+# ValaOS 2.0
 
 ## A Custom 32-Bit x86 Operating System Built From Scratch
 
@@ -15,7 +16,7 @@ https://nehalvala0005-cloud.github.io/ValaOS/downloads/ValaOS-2.0.0.iso
 
 ---
 
-# What is ValaOS?
+## What is ValaOS?
 
 ValaOS is a small but functional operating system environment designed to explore low-level computer architecture and operating system development.
 
@@ -49,7 +50,9 @@ Virtual Filesystem
 Program Loader
   ↓
 User Programs
-Why did I build ValaOS?
+```
+
+## Why did I build ValaOS?
 
 The main reason behind ValaOS is simple:
 
@@ -59,52 +62,53 @@ Instead of only learning operating system concepts theoretically, ValaOS turns t
 
 Through this project, concepts such as:
 
-CPU privilege levels
-Memory management
-Virtual memory
-Paging
-Interrupts
-Scheduling
-Context switching
-System calls
-Filesystems
-Disk I/O
-User-mode execution
+- CPU privilege levels
+- Memory management
+- Virtual memory
+- Paging
+- Interrupts
+- Scheduling
+- Context switching
+- System calls
+- Filesystems
+- Disk I/O
+- User-mode execution
 
 are implemented and connected inside one system.
 
 The project therefore acts as a practical exploration of computer architecture and operating system internals.
 
-What can ValaOS actually do?
+## What can ValaOS actually do?
 
 ValaOS currently provides a command-line operating environment with several core operating system capabilities.
 
 It can:
 
-Boot through GRUB
-Run a custom kernel
-Operate in 32-bit protected mode
-Manage physical memory
-Enable paging
-Manage virtual memory
-Handle page faults
-Configure hardware interrupts
-Generate hardware timer ticks
-Run a basic task scheduler
-Maintain task/process IDs
-Execute code in Ring 3
-Handle system calls
-Create and manage files
-Create directories
-Navigate through directories
-Persist filesystem data on disk
-Load programs from the filesystem
-Execute user programs
-Display processes/tasks
-Monitor system uptime
-Run subsystem tests
-Perform an integrated system self-test
-What makes ValaOS different from a simple OS demo?
+- Boot through GRUB
+- Run a custom kernel
+- Operate in 32-bit protected mode
+- Manage physical memory
+- Enable paging
+- Manage virtual memory
+- Handle page faults
+- Configure hardware interrupts
+- Generate hardware timer ticks
+- Run a basic task scheduler
+- Maintain task/process IDs
+- Execute code in Ring 3
+- Handle system calls
+- Create and manage files
+- Create directories
+- Navigate through directories
+- Persist filesystem data on disk
+- Load programs from the filesystem
+- Execute user programs
+- Display processes/tasks
+- Monitor system uptime
+- Run subsystem tests
+- Perform an integrated system self-test
+
+## What makes ValaOS different from a simple OS demo?
 
 ValaOS is not just a kernel that prints text on the screen.
 
@@ -112,6 +116,7 @@ The project connects multiple operating-system subsystems together.
 
 For example:
 
+```text
 Hardware Timer
       ↓
 Interrupt
@@ -137,42 +142,45 @@ System Call
 Kernel
      ↓
 Operation
+```
 
 The objective is to make the components work together rather than keeping them as isolated experiments.
 
-What is the current version of ValaOS?
+## What is the current version of ValaOS?
 
 The current release is:
 
-ValaOS 2.0.0
+> **Current Release: ValaOS 2.0.0**
 
 ValaOS 2.0 represents a major expansion from the initial prototype.
 
 Major additions include:
 
-Paging
-Virtual memory
-Page fault handling
-Hardware timer
-Timer-driven scheduling
-Task execution contexts
-Private task stacks
-Ring 3 user-mode execution
-System calls
-User task termination
-PID-based task management
-Persistent VFS
-Hierarchical directories
-Disk-backed storage
-Filesystem-backed program loading
-Generic program execution
-Program listing
-Process listing
-System self-test
-How does ValaOS boot?
+- Paging
+- Virtual memory
+- Page fault handling
+- Hardware timer
+- Timer-driven scheduling
+- Task execution contexts
+- Private task stacks
+- Ring 3 user-mode execution
+- System calls
+- User task termination
+- PID-based task management
+- Persistent VFS
+- Hierarchical directories
+- Disk-backed storage
+- Filesystem-backed program loading
+- Generic program execution
+- Program listing
+- Process listing
+- System self-test
+
+## How does ValaOS boot?
 
 The boot process begins with GRUB loading the ValaOS kernel.
 
+```text
 The simplified boot sequence is:
 
 GRUB
@@ -198,64 +206,68 @@ Timer Initialization
 Scheduler
  ↓
 Filesystem
- ↓
+```
+
+↓
 Shell
 
 The bootloader and low-level CPU initialization are implemented using x86 Assembly.
 
-What architecture does ValaOS use?
+## What architecture does ValaOS use?
 
 ValaOS currently targets:
 
+```text
 Architecture: 32-bit x86
 Execution Environment: QEMU
 Kernel: Custom
 Bootloader: GRUB
+```
 
 The current implementation is intentionally 32-bit.
 
 A future version can move toward x86_64 after the underlying kernel architecture is sufficiently mature.
 
-How does ValaOS manage memory?
+## How does ValaOS manage memory?
 
 ValaOS contains its own basic memory management subsystem.
 
-The memory manager keeps track of memory pages and provides information such as:
+**The memory manager keeps track of memory pages and provides information such as:**
 
-Total Pages
-Used Pages
-Page Size
+- Total Pages
+- Used Pages
+- Page Size
 
-The current page size is:
+**The current page size is:**
 
-4096 bytes
+> **Page Size: 4096 bytes**
 
 Memory-related functionality can also be tested through commands available inside the ValaOS shell.
 
-What is paging in ValaOS?
+## What is paging in ValaOS?
 
 ValaOS implements x86 paging to introduce virtual memory.
 
 Paging allows the operating system to control how virtual addresses are mapped to physical memory.
 
-The paging subsystem contains:
+**The paging subsystem contains:**
 
-Page directories
-Page tables
-Page mappings
-Page flags
-User-accessible pages
-Supervisor-only pages
+- Page directories
+- Page tables
+- Page mappings
+- Page flags
+- User-accessible pages
+- Supervisor-only pages
 
 The project also contains dedicated paging tests to verify the subsystem.
 
-How does ValaOS provide virtual memory?
+## How does ValaOS provide virtual memory?
 
 Virtual memory allows software to work with virtual addresses instead of directly depending on physical memory addresses.
 
 ValaOS uses separate virtual memory regions for user programs.
 
-The current user program layout includes:
+**The current user program layout includes:**
 
 User Code
 0x00400000
@@ -267,12 +279,13 @@ The paging system uses permission flags to separate user-accessible memory from 
 
 This provides the foundation for protected user-mode execution.
 
-What happens when a page fault occurs?
+## What happens when a page fault occurs?
 
 ValaOS contains page fault handling for invalid memory accesses.
 
-When the processor detects a page fault:
+**When the processor detects a page fault:**
 
+```text
 Invalid Memory Access
         ↓
 CPU raises Page Fault
@@ -282,30 +295,32 @@ Interrupt Handler
 Page Fault Handler
         ↓
 Fault Information
+```
 
 The system can obtain the address that caused the fault through the CPU's page-fault information register.
 
 Page fault handling is an important part of the virtual memory subsystem.
 
-How does ValaOS handle interrupts?
+## How does ValaOS handle interrupts?
 
 ValaOS uses the x86 Interrupt Descriptor Table (IDT) to register interrupt handlers.
 
-The interrupt subsystem currently supports important mechanisms including:
+**The interrupt subsystem currently supports important mechanisms including:**
 
-Hardware timer interrupts
-System call interrupts
+- Hardware timer interrupts
+- System call interrupts
 
 The Programmable Interrupt Controller (PIC) is configured during initialization.
 
-Why does ValaOS need a hardware timer?
+## Why does ValaOS need a hardware timer?
 
 The hardware timer provides periodic interrupts to the kernel.
 
 These timer ticks are used by the scheduler.
 
-The simplified flow is:
+**The simplified flow is:**
 
+```text
 Hardware Timer
       ↓
 Timer Interrupt
@@ -317,51 +332,52 @@ Scheduler
 Task Selection
       ↓
 Context Switch
+```
 
 ValaOS also maintains a timer tick counter that can be inspected from the shell.
 
-How does the ValaOS scheduler work?
+## How does the ValaOS scheduler work?
 
 ValaOS contains a basic timer-driven scheduler.
 
-Each task maintains information such as:
+**Each task maintains information such as:**
 
-PID
-Name
-State
-Stack
-Execution Context
+- PID
+- Name
+- State
+- Stack
+- Execution Context
 
-Supported states include:
+**Supported states include:**
 
-READY
-RUNNING
-BLOCKED
-TERMINATED
+- READY
+- RUNNING
+- BLOCKED
+- TERMINATED
 
 The scheduler uses timer interrupts to determine when task execution should change.
 
 Each task can have its own execution context and private stack.
 
-What tasks currently exist in ValaOS?
+## What tasks currently exist in ValaOS?
 
-The current task system contains basic system tasks such as:
+**The current task system contains basic system tasks such as:**
 
-kernel
-shell
-idle
+- kernel
+- shell
+- idle
 
 The scheduler maintains their execution state and context.
 
 The shell also provides commands for inspecting task information.
 
-Does ValaOS support user-mode execution?
+## Does ValaOS support user-mode execution?
 
-Yes.
+> **Yes.**
 
 One of the important milestones of ValaOS 2.0 is the introduction of Ring 3 user-mode execution.
 
-The architecture separates:
+**The architecture separates:**
 
 Ring 0 → Kernel
 Ring 3 → User Programs
@@ -370,12 +386,13 @@ The kernel operates with higher privileges while user programs execute with rest
 
 This establishes the foundation for process isolation and protected user applications.
 
-Why is Ring 3 important?
+## Why is Ring 3 important?
 
 Running everything inside the kernel would mean that a program could potentially operate with kernel-level privileges.
 
 ValaOS instead separates user programs from the kernel:
 
+```text
         KERNEL
         Ring 0
            ↑
@@ -383,20 +400,22 @@ ValaOS instead separates user programs from the kernel:
            ↑
       USER PROGRAM
         Ring 3
+```
 
 This separation is a fundamental operating system concept.
 
-How do user programs communicate with the kernel?
+## How do user programs communicate with the kernel?
 
 User programs communicate with the kernel through system calls.
 
-Currently ValaOS provides basic system-call functionality including:
+**Currently ValaOS provides basic system-call functionality including:**
 
-SYS_WRITE
-SYS_EXIT
+- SYS_WRITE
+- SYS_EXIT
 
-The general flow is:
+**The general flow is:**
 
+```text
 User Program
      ↓
 System Call
@@ -406,7 +425,9 @@ Kernel Handler
 Requested Operation
      ↓
 Return to User Program
-What does SYS_WRITE do?
+```
+
+## What does SYS_WRITE do?
 
 SYS_WRITE allows a user program to request output through the kernel.
 
@@ -414,12 +435,13 @@ Instead of directly controlling kernel functionality, the user program asks the 
 
 This demonstrates the basic idea behind the system-call interface.
 
-What does SYS_EXIT do?
+## What does SYS_EXIT do?
 
 SYS_EXIT allows a user program to terminate itself.
 
-The flow is:
+**The flow is:**
 
+```text
 User Program
      ↓
 SYS_EXIT
@@ -427,89 +449,92 @@ SYS_EXIT
 Kernel
      ↓
 Task Termination
+```
 
 ValaOS updates the user task state and returns control appropriately.
 
-Does ValaOS have a filesystem?
+## Does ValaOS have a filesystem?
 
-Yes.
+> **Yes.**
 
 ValaOS contains a custom Virtual Filesystem (VFS).
 
-The VFS supports:
+**The VFS supports:**
 
-Files
-Directories
-Parent-child relationships
-File data
-Directory navigation
-File creation
-File reading
-File writing
-File deletion
-Is the VFS persistent?
+- Files
+- Directories
+- Parent-child relationships
+- File data
+- Directory navigation
+- File creation
+- File reading
+- File writing
+- File deletion
 
-Yes.
+## Is the VFS persistent?
+
+> **Yes.**
 
 This is one of the important features of ValaOS 2.0.
 
 The filesystem is backed by a virtual disk image rather than existing only in RAM.
 
-The disk image is:
+**The disk image is:**
 
-build/ValaOS.img
+`build/ValaOS.img`
 
 Filesystem information is stored in dedicated disk sectors.
 
 This allows filesystem data to remain available across system restarts as long as the disk image is preserved.
 
-Can ValaOS create directories?
+## Can ValaOS create directories?
 
-Yes.
+> **Yes.**
 
-The shell provides:
+**The shell provides:**
 
-mkdir
+`mkdir`
 
-Directories can then be accessed using:
+**Directories can then be accessed using:**
 
-cd
+`cd`
 
-and inspected using:
+**and inspected using:**
 
-ls
+`ls`
 
-The current working directory can be displayed using:
+**The current working directory can be displayed using:**
 
-pwd
-What filesystem commands are available?
+`pwd`
+## What filesystem commands are available?
 
-ValaOS currently provides commands including:
+**ValaOS currently provides commands including:**
 
-pwd
-cd
-ls
-mkdir
-cat
-touch
-write
-rm
+- pwd
+- cd
+- ls
+- mkdir
+- cat
+- touch
+- write
+- rm
 
 These commands provide basic filesystem interaction directly from the ValaOS shell.
 
-Can ValaOS execute programs stored on its filesystem?
+## Can ValaOS execute programs stored on its filesystem?
 
-Yes.
+> **Yes.**
 
 ValaOS contains a filesystem-backed user program loader.
 
-A program can be stored as a binary file such as:
+**A program can be stored as a binary file such as:**
 
-hello.bin
-test.bin
+- hello.bin
+- test.bin
 
-The loader can:
+**The loader can:**
 
+```text
 Find Program
     ↓
 Read Program From VFS
@@ -519,128 +544,149 @@ Load Into User Memory
 Enter Ring 3
     ↓
 Execute Program
-How do I run a program in ValaOS?
+```
 
-ValaOS provides a generic command:
+## How do I run a program in ValaOS?
 
-run <program>
+**ValaOS provides a generic command:**
 
-For example:
+`run <program>`
 
-run hello
+**For example:**
+
+`run hello`
 
 or:
 
-run test
+`run test`
 
-The shell resolves the corresponding binary:
+**The shell resolves the corresponding binary:**
 
 hello → hello.bin
 test  → test.bin
 
 This makes the program execution system reusable instead of hardcoding every individual program.
 
-How can I see available programs?
+## How can I see available programs?
 
-Use:
+**Use:**
 
-programs
+`programs`
 
 The command searches the filesystem for .bin program files and displays the available programs.
 
-Example:
+**Example:**
 
+```text
 PROGRAMS
 hello
 test
-Does ValaOS have a shell?
+```
 
-Yes.
+## Does ValaOS have a shell?
+
+> **Yes.**
 
 ValaOS includes an interactive command-line shell.
 
 The shell acts as the main interface between the user and the operating system.
 
-It can be used to:
+**It can be used to:**
 
-Inspect the system
-Test memory
-Test paging
-Navigate the filesystem
-Manage files
-Inspect tasks
-Run programs
-Monitor uptime
-Run diagnostics
-Shut down or reboot the system
-What commands are available?
-System Information
-info
-about
-version
-uptime
-Memory and Virtual Memory
-memtest
-memstress
-meminfo
-paging
-ptest
-dptest
-vmtest
-vmaptest
-Filesystem
-pwd
-cd
-ls
-mkdir
-cat
-touch
-write
-rm
-Process and Scheduler
-ps
-tasks
-ticks
-schedule
-Programs
-run <program>
-programs
-Hardware and System
-disktest
-reboot
-shutdown
-Diagnostics
-selftest
-How does ValaOS test its own subsystems?
+- Inspect the system
+- Test memory
+- Test paging
+- Navigate the filesystem
+- Manage files
+- Inspect tasks
+- Run programs
+- Monitor uptime
+- Run diagnostics
+- Shut down or reboot the system
+
+## What commands are available?
+
+**System Information**
+
+- info
+- about
+- version
+- uptime
+
+**Memory and Virtual Memory**
+
+- memtest
+- memstress
+- meminfo
+- paging
+- ptest
+- dptest
+- vmtest
+- vmaptest
+
+**Filesystem**
+
+- pwd
+- cd
+- ls
+- mkdir
+- cat
+- touch
+- write
+- rm
+
+**Process and Scheduler**
+
+- ps
+- tasks
+- ticks
+- schedule
+
+**Programs**
+
+- run <program>
+- programs
+
+**Hardware and System**
+
+- disktest
+- reboot
+- shutdown
+
+**Diagnostics**
+
+`selftest`
+## How does ValaOS test its own subsystems?
 
 ValaOS contains individual subsystem tests as well as an integrated self-test.
 
-Individual tests cover areas such as:
+**Individual tests cover areas such as:**
 
-Memory
-Paging
-Page Mapping
-Virtual Memory
-Disk
-Scheduler
+- Memory
+- Paging
+- Page Mapping
+- Virtual Memory
+- Disk
+- Scheduler
 
-The integrated command is:
+**The integrated command is:**
 
-selftest
-What does the ValaOS self-test check?
+`selftest`
+## What does the ValaOS self-test check?
 
-The self-test currently checks seven major components:
+**The self-test currently checks seven major components:**
 
-Memory
-Paging
-Disk
-Virtual Memory
-Scheduler
-Program Loader
-VFS
+- Memory
+- Paging
+- Disk
+- Virtual Memory
+- Scheduler
+- Program Loader
+- VFS
 
-The current result is:
+**The current result is:**
 
+```text
 ========== ValaOS 2.0 SELF TEST ==========
 
 [ OK ] Memory
@@ -656,13 +702,15 @@ Passed: 7
 Failed: 0
 SYSTEM STATUS: OK
 ===========================================
+```
 
 This provides a quick health check for the major implemented subsystems.
 
-What is the architecture of ValaOS?
+## What is the architecture of ValaOS?
 
-The current high-level architecture looks like this:
+**The current high-level architecture looks like this:**
 
+```text
                     +------------------+
                     |      GRUB        |
                     +--------+---------+
@@ -706,7 +754,11 @@ The current high-level architecture looks like this:
                     +------------------+
                     | Persistent Disk  |
                     +------------------+
-What technologies are used?
+```
+
+## What technologies are used?
+
+```text
 Area	Technology
 Architecture	32-bit x86
 Kernel	C
@@ -719,55 +771,60 @@ Build System	Make
 Virtual Machine	QEMU
 Version Control	Git
 Repository	GitHub
-Why use both C and Assembly?
+```
 
-C provides a practical language for implementing larger kernel components such as:
+## Why use both C and Assembly?
 
-Memory management
-Scheduler
-VFS
-Disk management
-System calls
+**C provides a practical language for implementing larger kernel components such as:**
 
-Assembly is used where direct CPU interaction is required, including:
+- Memory management
+- Scheduler
+- VFS
+- Disk management
+- System calls
 
-Boot code
-CPU mode transitions
-Interrupt entry
-Context switching support
-User-mode transitions
-System-call entry
+**Assembly is used where direct CPU interaction is required, including:**
+
+- Boot code
+- CPU mode transitions
+- Interrupt entry
+- Context switching support
+- User-mode transitions
+- System-call entry
 
 This combination provides both high-level kernel development and low-level processor control.
 
-What are the advantages of ValaOS?
-1. Practical Operating System Experience
+## What are the advantages of ValaOS?
+
+### 1. Practical Operating System Experience
 
 ValaOS converts theoretical operating system concepts into working implementations.
 
-2. Low-Level Programming
+### 2. Low-Level Programming
 
-The project works directly with concepts such as:
+**The project works directly with concepts such as:**
 
-CPU Registers
-GDT
-IDT
-PIC
-PIT
-Paging
-Page Tables
-Interrupts
-Privilege Levels
-3. C and Assembly Integration
+- CPU Registers
+- GDT
+- IDT
+- PIC
+- PIT
+- Paging
+- Page Tables
+- Interrupts
+- Privilege Levels
+
+### 3. C and Assembly Integration
 
 The project demonstrates how C and Assembly can work together inside a kernel.
 
-4. Modular Development
+### 4. Modular Development
 
 Major subsystems are separated into individual modules.
 
-For example:
+**For example:**
 
+```text
 memory.c       → Memory management
 paging.c       → Paging
 interrupts.c   → Interrupt configuration
@@ -776,24 +833,28 @@ vfs.c          → Virtual filesystem
 disk.c         → Disk access
 syscall.c      → System calls
 keyboard.c     → Shell and keyboard input
-5. Real Debugging Experience
+```
+
+### 5. Real Debugging Experience
 
 Operating system development requires dealing with issues at a much lower level than normal application development.
 
-ValaOS provides practical experience with:
+**ValaOS provides practical experience with:**
 
-Kernel crashes
-Memory faults
-Invalid mappings
-Interrupt problems
-Context switching
-Boot problems
-Filesystem issues
-Hardware-level debugging
-6. Extensible Architecture
+- Kernel crashes
+- Memory faults
+- Invalid mappings
+- Interrupt problems
+- Context switching
+- Boot problems
+- Filesystem issues
+- Hardware-level debugging
 
-The current architecture provides a foundation for future features such as:
+### 6. Extensible Architecture
 
+**The current architecture provides a foundation for future features such as:**
+
+```text
 More System Calls
        ↓
 Better Process Management
@@ -807,71 +868,80 @@ Drivers
 64-bit Architecture
        ↓
 Graphical Interface
-What are the current limitations?
+```
+
+## What are the current limitations?
 
 ValaOS is still a development and learning operating system.
 
-Current limitations include:
+**Current limitations include:**
 
-32-bit x86 architecture
-Basic scheduler
-Limited filesystem capacity
-Limited executable format support
-Small system-call interface
-Basic command-line shell
-Limited hardware drivers
-No networking stack
-No graphical interface
-No USB subsystem
-No SMP/multi-core support
-Limited process isolation
+- 32-bit x86 architecture
+- Basic scheduler
+- Limited filesystem capacity
+- Limited executable format support
+- Small system-call interface
+- Basic command-line shell
+- Limited hardware drivers
+- No networking stack
+- No graphical interface
+- No USB subsystem
+- No SMP/multi-core support
+- Limited process isolation
 
 These limitations are also potential areas for future development.
 
-What are the future goals of ValaOS?
+## What are the future goals of ValaOS?
 
 The long-term goal is to gradually evolve ValaOS from a small educational operating system into a much more capable experimental OS.
 
-Planned areas include:
+**Planned areas include:**
 
-Better Memory Management
-Dynamic kernel heap
-Improved physical memory allocator
-Better virtual memory management
-Per-process address spaces
-Improved memory protection
-Copy-on-write support
-Better Process Management
-Improved process creation
-Better process termination
-Process isolation
-Process priorities
-More advanced scheduling
-Multiple independent user processes
-More System Calls
+### Better Memory Management
 
-Future system calls could provide functionality for:
+- Dynamic kernel heap
+- Improved physical memory allocator
+- Better virtual memory management
+- Per-process address spaces
+- Improved memory protection
+- Copy-on-write support
 
-File Operations
-Process Management
-Memory Management
-Input/Output
-Time
-Inter-Process Communication
-Improved Filesystem
+### Better Process Management
 
-Future VFS improvements may include:
+- Improved process creation
+- Better process termination
+- Process isolation
+- Process priorities
+- More advanced scheduling
+- Multiple independent user processes
 
-Larger storage
-Better metadata
-File permissions
-File timestamps
-Improved allocation
-More efficient directory management
-Networking
+### More System Calls
 
-A future version could introduce:
+**Future system calls could provide functionality for:**
 
+- File Operations
+- Process Management
+- Memory Management
+- Input/Output
+- Time
+- Inter-Process Communication
+
+### Improved Filesystem
+
+**Future VFS improvements may include:**
+
+- Larger storage
+- Better metadata
+- File permissions
+- File timestamps
+- Improved allocation
+- More efficient directory management
+
+### Networking
+
+**A future version could introduce:**
+
+```text
 Ethernet
    ↓
 Network Driver
@@ -883,9 +953,11 @@ IP
 TCP/UDP
    ↓
 Applications
-64-Bit Architecture
+```
 
-One of the major long-term goals is moving from:
+### 64-Bit Architecture
+
+**One of the major long-term goals is moving from:**
 
 32-bit x86
 
@@ -895,44 +967,47 @@ x86_64
 
 This would require major changes to the boot process, memory management, paging, interrupt system, CPU context, and kernel architecture.
 
-Graphical Interface
+### Graphical Interface
 
-A much later goal could be a basic graphical environment with:
+**A much later goal could be a basic graphical environment with:**
 
-Framebuffer
-Mouse support
-Window management
-Keyboard input
-Basic GUI applications
+- Framebuffer
+- Mouse support
+- Window management
+- Keyboard input
+- Basic GUI applications
 
 The priority is to strengthen the kernel before introducing a graphical interface.
 
-What have I learned by building ValaOS?
+## What have I learned by building ValaOS?
 
-ValaOS provides hands-on experience with:
+**ValaOS provides hands-on experience with:**
 
-Operating system architecture
-Kernel development
-C programming
-x86 Assembly
-Computer architecture
-Memory management
-Paging
-Virtual memory
-Interrupt handling
-Hardware timers
-Task scheduling
-Context switching
-CPU privilege levels
-Ring 3 execution
-System calls
-Filesystem design
-Disk I/O
-Debugging
-Build systems
-Virtual machines
-Git and GitHub
-What is the current project status?
+- Operating system architecture
+- Kernel development
+- C programming
+- x86 Assembly
+- Computer architecture
+- Memory management
+- Paging
+- Virtual memory
+- Interrupt handling
+- Hardware timers
+- Task scheduling
+- Context switching
+- CPU privilege levels
+- Ring 3 execution
+- System calls
+- Filesystem design
+- Disk I/O
+- Debugging
+- Build systems
+- Virtual machines
+- Git and GitHub
+
+## What is the current project status?
+
+```text
 Project       : ValaOS
 Version       : 2.0.0
 Architecture  : 32-bit x86
@@ -946,42 +1021,47 @@ Program Loader: Filesystem-backed
 Testing       : 7/7 Passed
 Environment   : QEMU
 Status        : Stable Development Build
-How can ValaOS be built?
+```
 
-The project uses Make for compilation.
+## How can ValaOS be built?
 
-Clone the repository:
+**The project uses Make for compilation.**
 
-git clone https://github.com/nikhilvala0005-cloud/ValaOS.git
+**Clone the repository:**
 
-Enter the project:
+`git clone https://github.com/nikhilvala0005-cloud/ValaOS.git`
 
-cd ValaOS
+**Enter the project:**
 
-Build:
+`cd ValaOS`
 
-make
+**Build:**
 
-Create the bootable ISO:
+`make`
 
-make iso
+**Create the bootable ISO:**
 
-Run the operating system:
+`make iso`
 
-make run
-How can the build be cleaned?
+**Run the operating system:**
 
-Use:
+`make run`
 
-make clean
+## How can the build be cleaned?
 
-Generated build files can then be recreated using:
+**Use:**
 
-make
+`make clean`
+
+**Generated build files can then be recreated using:**
+
+`make`
 
 The persistent disk image should be preserved if filesystem data needs to remain available.
 
-What does the project structure look like?
+## What does the project structure look like?
+
+```text
 ValaOS/
 │
 ├── boot/
@@ -1017,12 +1097,15 @@ ValaOS/
 ├── Makefile
 ├── README.md
 └── .gitignore
-Why is ValaOS a valuable engineering project?
+```
+
+## Why is ValaOS a valuable engineering project?
 
 ValaOS demonstrates more than the ability to write application-level code.
 
-It requires understanding how software interacts with:
+**It requires understanding how software interacts with:**
 
+```text
 CPU
  ↓
 Memory
@@ -1038,23 +1121,25 @@ Processes
 Filesystem
  ↓
 User Programs
+```
 
-The project therefore combines concepts from:
+**The project therefore combines concepts from:**
 
-Operating Systems
-Computer Architecture
-Systems Programming
-Memory Management
-Software Engineering
+- Operating Systems
+- Computer Architecture
+- Systems Programming
+- Memory Management
+- Software Engineering
 
 into one continuous project.
 
-What is the long-term vision for ValaOS?
+## What is the long-term vision for ValaOS?
 
 The long-term vision is to continue building ValaOS incrementally.
 
-The intended progression is:
+**The intended progression is:**
 
+```text
 Small Kernel
      ↓
 Working OS Environment
@@ -1074,37 +1159,38 @@ Networking
 64-bit Architecture
      ↓
 Graphical Environment
+```
 
 The goal is not to build everything at once.
 
 The goal is to understand, implement, test, and improve each subsystem one step at a time.
 
-Where can the project be found?
+## Where can the project be found?
 
-GitHub Repository:
+**GitHub Repository:**
 
 https://github.com/nehalvala0005-cloud/ValaOS
 
-Who built ValaOS?
+## Who built ValaOS?
 
 Nehal Vala
 
 Computer Engineering Student
 
-Areas of interest:
+**Areas of interest:**
 
-Operating Systems
-Artificial Intelligence
-Machine Learning
-Systems Programming
-Software Development
-Computer Architecture
+- Operating Systems
+- Artificial Intelligence
+- Machine Learning
+- Systems Programming
+- Software Development
+- Computer Architecture
 
 ValaOS is a personal engineering and learning project created to explore operating system development from the lowest practical level.
 
-Final Thoughts
+## Final Thoughts
 
-ValaOS started with a simple question:
+**ValaOS started with a simple question:**
 
 "What actually happens inside a computer after the power is turned on?"
 
@@ -1116,6 +1202,7 @@ The current version is only one stage of the project.
 
 The architecture is intentionally designed to provide a foundation for future development.
 
+```text
 Understand the concept.
         ↓
 Implement the subsystem.
@@ -1125,9 +1212,9 @@ Test it.
 Connect it with the kernel.
         ↓
 Build the next subsystem.
+```
 
 ValaOS — Built from scratch, one subsystem at a time.
-
 
 ## Copyright
 
@@ -1145,8 +1232,8 @@ prior written permission from the copyright holder.
 
 **Nehal Vala**
 
-GitHub:  
+GitHub:
 https://github.com/nehalvala0005-cloud
 
-Repository:  
+Repository:
 https://github.com/nehalvala0005-cloud/ValaOS
