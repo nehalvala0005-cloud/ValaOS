@@ -1,138 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
 
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>ValaOS 2.0 — Custom 32-Bit x86 Operating System</title>
 
     <meta
-        name="description"
-        content="ValaOS 2.0 is a custom 32-bit x86 operating system built from scratch using C, x86 Assembly, GRUB and QEMU."
-    >
+      name="description"
+      content="ValaOS 2.0 is a custom 32-bit x86 operating system built from scratch using C, x86 Assembly, GRUB and QEMU."
+    />
 
     <meta
-        name="keywords"
-        content="ValaOS, operating system, custom OS, x86 OS, 32-bit OS, C, Assembly, GRUB, QEMU, kernel, ValaOS 2.0"
-    >
+      name="keywords"
+      content="ValaOS, operating system, custom OS, x86 OS, 32-bit OS, C, Assembly, GRUB, QEMU, kernel, ValaOS 2.0"
+    />
 
-    <meta
-        name="author"
-        content="Nehal Vala"
-    >
+    <meta name="author" content="Nehal Vala" />
 
-    <meta
-        name="robots"
-        content="index, follow"
-    >
+    <meta name="robots" content="index, follow" />
 
-    <meta
-        name="theme-color"
-        content="#030405"
-    >
+    <meta name="theme-color" content="#030405" />
 
     <!-- Open Graph -->
 
     <meta
-        property="og:title"
-        content="ValaOS 2.0 — Custom 32-Bit x86 Operating System"
-    >
+      property="og:title"
+      content="ValaOS 2.0 — Custom 32-Bit x86 Operating System"
+    />
 
     <meta
-        property="og:description"
-        content="Explore ValaOS 2.0 — a custom 32-bit x86 operating system with memory management, paging, interrupts, scheduling, Ring 3 user mode, system calls and a persistent VFS."
-    >
+      property="og:description"
+      content="Explore ValaOS 2.0 — a custom 32-bit x86 operating system with memory management, paging, interrupts, scheduling, Ring 3 user mode, system calls and a persistent VFS."
+    />
 
-    <meta
-        property="og:type"
-        content="website"
-    >
+    <meta property="og:type" content="website" />
 
-    <meta
-        property="og:site_name"
-        content="ValaOS"
-    >
+    <meta property="og:site_name" content="ValaOS" />
 
     <!-- Browser / Mobile -->
 
-    <meta
-        name="mobile-web-app-capable"
-        content="yes"
-    >
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <meta name="apple-mobile-web-app-title" content="ValaOS" />
 
     <meta
-        name="apple-mobile-web-app-capable"
-        content="yes"
-    >
-
-    <meta
-        name="apple-mobile-web-app-title"
-        content="ValaOS"
-    >
-
-    <meta
-        name="apple-mobile-web-app-status-bar-style"
-        content="black-translucent"
-    >
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
 
     <!-- Favicon -->
 
-   <link
-    rel="icon"
-    type="image/svg+xml"
-    href="assets/images/logo/valaos.svg"
->
-
     <link
-        rel="stylesheet"
-        href="style.css"
-    >
+      rel="icon"
+      type="image/svg+xml"
+      href="assets/images/logo/valaos.svg"
+    />
 
-</head>
+    <link rel="stylesheet" href="style.css" />
 
-<body>
+    <style>
+      .developer-section {
+        position: relative;
+        z-index: 5;
+        padding: 120px 8vw;
+        background: #050608;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
 
+      .developer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 70px;
+        margin-top: 55px;
+      }
+
+      .developer-intro h3 {
+        font-size: clamp(38px, 5vw, 72px);
+        margin: 0 0 20px;
+        color: #fff;
+      }
+
+      .developer-intro h3 span {
+        color: #ff3344;
+      }
+
+      .developer-role {
+        color: #aaa;
+        font-size: 18px;
+        margin-bottom: 25px;
+      }
+
+      .developer-intro p {
+        color: #888;
+        line-height: 1.8;
+        max-width: 650px;
+      }
+
+      .developer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 30px;
+      }
+
+      .developer-links a {
+        display: inline-block;
+        padding: 12px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        text-decoration: none;
+        transition: 0.3s;
+      }
+
+      .developer-links a:hover {
+        border-color: #ff3344;
+        color: #ff3344;
+      }
+
+      .contact-box {
+        padding: 35px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .contact-box h3 {
+        color: #fff;
+        margin-top: 0;
+        font-size: 28px;
+      }
+
+      .contact-box p {
+        color: #888;
+        line-height: 1.7;
+      }
+
+      .contact-form {
+        display: grid;
+        gap: 14px;
+        margin-top: 25px;
+      }
+
+      .contact-form input,
+      .contact-form textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 15px;
+        background: #090b0e;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-family: inherit;
+        outline: none;
+      }
+
+      .contact-form input:focus,
+      .contact-form textarea:focus {
+        border-color: #ff3344;
+      }
+
+      .contact-form textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+
+      .contact-form button {
+        padding: 15px 22px;
+        border: none;
+        background: #ff3344;
+        color: #fff;
+        font-weight: bold;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+
+      .contact-form button:hover {
+        background: #d91f31;
+      }
+
+      .opportunity-box {
+        margin-top: 70px;
+        padding: 45px;
+        border: 1px solid rgba(255, 51, 68, 0.3);
+        background: linear-gradient(
+          135deg,
+          rgba(255, 51, 68, 0.06),
+          rgba(255, 255, 255, 0.015)
+        );
+      }
+
+      .opportunity-box h3 {
+        color: #fff;
+        font-size: 30px;
+        margin-top: 0;
+      }
+
+      .opportunity-box p {
+        color: #999;
+        line-height: 1.8;
+      }
+
+      .opportunity-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 25px 0;
+      }
+
+      .opportunity-list span {
+        padding: 10px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #ccc;
+      }
+
+      .support-button {
+        display: inline-block;
+        margin-top: 15px;
+        padding: 14px 24px;
+        border: 1px solid #ff3344;
+        color: #ff3344;
+        text-decoration: none;
+      }
+
+      .support-button:hover {
+        background: #ff3344;
+        color: #fff;
+      }
+
+      .contact-email {
+        display: inline-block;
+        margin-top: 18px;
+        color: #ff3344;
+        text-decoration: none;
+      }
+      #contactStatus {
+        margin-top: 8px;
+        padding: 12px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      @media (max-width: 800px) {
+        .developer-section {
+          padding: 80px 6vw;
+        }
+
+        .developer-grid {
+          grid-template-columns: 1fr;
+          gap: 45px;
+        }
+
+        .contact-box,
+        .opportunity-box {
+          padding: 25px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
     <!-- =========================
          NAVBAR
     ========================== -->
 
     <nav class="navbar">
+      <a href="#home" class="brand"> VALA<span>OS</span> </a>
 
-        <a
-            href="#home"
-            class="brand"
-        >
-            VALA<span>OS</span>
-        </a>
+      <div class="nav-links">
+        <a href="#about"> About </a>
 
-        <div class="nav-links">
+        <a href="#features"> Features </a>
 
-            <a href="#about">
-                About
-            </a>
+        <a href="#architecture"> Architecture </a>
 
-            <a href="#features">
-                Features
-            </a>
-
-            <a href="#architecture">
-                Architecture
-            </a>
-
-            <a href="#download">
-                Download
-            </a>
-
-        </div>
-
+        <a href="#download"> Download </a>
+      </div>
     </nav>
-
 
     <!-- =========================
          3D CANVAS
@@ -140,555 +287,459 @@
 
     <canvas id="valaos-canvas"></canvas>
 
-
     <!-- =========================
          HERO
     ========================== -->
 
-    <section
-        class="hero"
-        id="home"
-    >
+    <section class="hero" id="home">
+      <div class="hero-overlay">
+        <div class="status-line">SYSTEM BOOTING</div>
 
-        <div class="hero-overlay">
+        <h1>Vala<span>OS</span></h1>
 
-            <div class="status-line">
-                SYSTEM BOOTING
-            </div>
+        <h2>A Custom 32-Bit x86 Operating System</h2>
 
-            <h1>
-                Vala<span>OS</span>
-            </h1>
+        <p>Built from scratch using C and x86 Assembly.</p>
 
-            <h2>
-                A Custom 32-Bit x86 Operating System
-            </h2>
+        <div class="tech-stack">
+          C
 
-            <p>
-                Built from scratch using C and x86 Assembly.
-            </p>
+          <span>•</span>
 
-            <div class="tech-stack">
+          x86 ASSEMBLY
 
-                C
+          <span>•</span>
 
-                <span>•</span>
+          GRUB
 
-                x86 ASSEMBLY
+          <span>•</span>
 
-                <span>•</span>
-
-                GRUB
-
-                <span>•</span>
-
-                QEMU
-
-            </div>
-
-            <div class="hero-buttons">
-
-                <a
-                    href="#about"
-                    class="btn primary"
-                >
-                    EXPLORE SYSTEM
-                </a>
-
-                <a
-                    href="#download"
-                    class="btn secondary"
-                >
-                    DOWNLOAD ValaOS
-                </a>
-
-            </div>
-
+          QEMU
         </div>
 
-        <div class="hero-version">
-            ValaOS 2.0.0
-        </div>
+        <div class="hero-buttons">
+          <a href="#about" class="btn primary"> EXPLORE SYSTEM </a>
 
+          <a href="#download" class="btn secondary"> DOWNLOAD ValaOS </a>
+        </div>
+      </div>
+
+      <div class="hero-version">ValaOS 2.0.0</div>
     </section>
-
 
     <!-- =========================
          ABOUT
     ========================== -->
 
-    <section
-        class="content-section"
-        id="about"
-    >
+    <section class="content-section" id="about">
+      <div class="section-number">01 / SYSTEM</div>
 
-        <div class="section-number">
-            01 / SYSTEM
-        </div>
+      <h2>Built From Scratch.</h2>
 
-        <h2>
-            Built From Scratch.
-        </h2>
+      <p>
+        ValaOS is a custom 32-bit x86 operating system developed from the ground
+        up using C and x86 Assembly.
+      </p>
 
-        <p>
-            ValaOS is a custom 32-bit x86 operating system
-            developed from the ground up using C and x86
-            Assembly.
-        </p>
-
-        <p>
-            The project explores low-level operating system
-            concepts including booting, protected mode,
-            memory management, paging, interrupts,
-            scheduling, user-mode execution, system calls
-            and persistent storage.
-        </p>
-
+      <p>
+        The project explores low-level operating system concepts including
+        booting, protected mode, memory management, paging, interrupts,
+        scheduling, user-mode execution, system calls and persistent storage.
+      </p>
     </section>
-
 
     <!-- =========================
          FEATURES
     ========================== -->
 
-    <section
-        class="content-section"
-        id="features"
-    >
+    <section class="content-section" id="features">
+      <div class="section-number">02 / FEATURES</div>
 
-        <div class="section-number">
-            02 / FEATURES
+      <h2>System Capabilities</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span>01</span>
+
+          <h3>Memory Management</h3>
+
+          <p>Physical memory tracking, allocation and memory statistics.</p>
         </div>
 
-        <h2>
-            System Capabilities
-        </h2>
+        <div class="feature-card">
+          <span>02</span>
 
-        <div class="feature-grid">
+          <h3>Paging</h3>
 
-            <div class="feature-card">
-
-                <span>01</span>
-
-                <h3>
-                    Memory Management
-                </h3>
-
-                <p>
-                    Physical memory tracking,
-                    allocation and memory statistics.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>02</span>
-
-                <h3>
-                    Paging
-                </h3>
-
-                <p>
-                    Virtual memory mapping and
-                    x86 page permission handling.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>03</span>
-
-                <h3>
-                    Interrupts
-                </h3>
-
-                <p>
-                    Hardware and software interrupt
-                    handling through the IDT.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>04</span>
-
-                <h3>
-                    Hardware Timer
-                </h3>
-
-                <p>
-                    Timer-driven system ticks used
-                    by the scheduler.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>05</span>
-
-                <h3>
-                    Task Scheduler
-                </h3>
-
-                <p>
-                    PID-based task management and
-                    timer-driven context switching.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>06</span>
-
-                <h3>
-                    Ring 3 User Mode
-                </h3>
-
-                <p>
-                    User programs execute outside
-                    kernel privilege level.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>07</span>
-
-                <h3>
-                    System Calls
-                </h3>
-
-                <p>
-                    User programs communicate with
-                    the kernel through system calls.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>08</span>
-
-                <h3>
-                    Persistent VFS
-                </h3>
-
-                <p>
-                    Files and directories are stored
-                    on persistent disk-backed storage.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <span>09</span>
-
-                <h3>
-                    Program Loader
-                </h3>
-
-                <p>
-                    User programs are loaded directly
-                    from the ValaOS filesystem.
-                </p>
-
-            </div>
-
+          <p>Virtual memory mapping and x86 page permission handling.</p>
         </div>
 
+        <div class="feature-card">
+          <span>03</span>
+
+          <h3>Interrupts</h3>
+
+          <p>Hardware and software interrupt handling through the IDT.</p>
+        </div>
+
+        <div class="feature-card">
+          <span>04</span>
+
+          <h3>Hardware Timer</h3>
+
+          <p>Timer-driven system ticks used by the scheduler.</p>
+        </div>
+
+        <div class="feature-card">
+          <span>05</span>
+
+          <h3>Task Scheduler</h3>
+
+          <p>PID-based task management and timer-driven context switching.</p>
+        </div>
+
+        <div class="feature-card">
+          <span>06</span>
+
+          <h3>Ring 3 User Mode</h3>
+
+          <p>User programs execute outside kernel privilege level.</p>
+        </div>
+
+        <div class="feature-card">
+          <span>07</span>
+
+          <h3>System Calls</h3>
+
+          <p>User programs communicate with the kernel through system calls.</p>
+        </div>
+
+        <div class="feature-card">
+          <span>08</span>
+
+          <h3>Persistent VFS</h3>
+
+          <p>
+            Files and directories are stored on persistent disk-backed storage.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <span>09</span>
+
+          <h3>Program Loader</h3>
+
+          <p>User programs are loaded directly from the ValaOS filesystem.</p>
+        </div>
+      </div>
     </section>
-
 
     <!-- =========================
          ARCHITECTURE
     ========================== -->
 
-    <section
-        class="content-section architecture-section"
-        id="architecture"
-    >
+    <section class="content-section architecture-section" id="architecture">
+      <div class="section-number">03 / ARCHITECTURE</div>
 
-        <div class="section-number">
-            03 / ARCHITECTURE
-        </div>
+      <h2>System Architecture</h2>
 
-        <h2>
-            System Architecture
-        </h2>
+      <p>
+        From bootloader to user programs, every major layer is implemented as
+        part of ValaOS.
+      </p>
 
-        <p>
-            From bootloader to user programs,
-            every major layer is implemented as
-            part of ValaOS.
-        </p>
+      <div class="architecture-flow">
+        <div>GRUB</div>
 
-        <div class="architecture-flow">
+        <i>↓</i>
 
-            <div>
-                GRUB
-            </div>
+        <div>BOOTLOADER</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                BOOTLOADER
-            </div>
+        <div>PROTECTED MODE</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                PROTECTED MODE
-            </div>
+        <div>KERNEL</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                KERNEL
-            </div>
+        <div>MEMORY MANAGEMENT</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                MEMORY MANAGEMENT
-            </div>
+        <div>PAGING</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                PAGING
-            </div>
+        <div>INTERRUPTS + TIMER</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                INTERRUPTS + TIMER
-            </div>
+        <div>TASK SCHEDULER</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                TASK SCHEDULER
-            </div>
+        <div>RING 3 USER MODE</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                RING 3 USER MODE
-            </div>
+        <div>SYSTEM CALLS</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                SYSTEM CALLS
-            </div>
+        <div>VIRTUAL FILESYSTEM</div>
 
-            <i>↓</i>
+        <i>↓</i>
 
-            <div>
-                VIRTUAL FILESYSTEM
-            </div>
-
-            <i>↓</i>
-
-            <div>
-                USER PROGRAMS
-            </div>
-
-        </div>
-
+        <div>USER PROGRAMS</div>
+      </div>
     </section>
-
 
     <!-- =========================
          TERMINAL
     ========================== -->
 
-    <section
-        class="terminal-section"
-        id="demo"
-    >
+    <section class="terminal-section" id="demo">
+      <div class="section-number">04 / LIVE SYSTEM</div>
 
-        <div class="section-number">
-            04 / LIVE SYSTEM
+      <h2>ValaOS Terminal</h2>
+
+      <div class="terminal">
+        <div class="terminal-top">
+          <span></span>
+          <span></span>
+          <span></span>
+
+          ValaOS Terminal
         </div>
 
-        <h2>
-            ValaOS Terminal
-        </h2>
-
-        <div class="terminal">
-
-            <div class="terminal-top">
-
-                <span></span>
-                <span></span>
-                <span></span>
-
-                ValaOS Terminal
-
-            </div>
-
-            <div class="terminal-body"></div>
-
-        </div>
-
+        <div class="terminal-body"></div>
+      </div>
     </section>
-
 
     <!-- =========================
          SELF TEST
     ========================== -->
 
-    <section
-        class="status-section"
-        id="status"
-    >
+    <section class="status-section" id="status">
+      <div class="section-number">05 / VALIDATION</div>
 
-        <div class="section-number">
-            05 / VALIDATION
+      <h2>System Self-Test</h2>
+
+      <div class="status">
+        <div>
+          <span>Memory</span>
+          <strong>PASS</strong>
         </div>
 
-        <h2>
-            System Self-Test
-        </h2>
-
-        <div class="status">
-
-            <div>
-                <span>Memory</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>Paging</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>Disk</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>Virtual Memory</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>Scheduler</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>Program Loader</span>
-                <strong>PASS</strong>
-            </div>
-
-            <div>
-                <span>VFS</span>
-                <strong>PASS</strong>
-            </div>
-
+        <div>
+          <span>Paging</span>
+          <strong>PASS</strong>
         </div>
 
-        <div class="system-ok">
-            PASSED: 7 &nbsp;&nbsp; | &nbsp;&nbsp;
-            FAILED: 0
-            <br><br>
-            SYSTEM STATUS: OK
+        <div>
+          <span>Disk</span>
+          <strong>PASS</strong>
         </div>
 
+        <div>
+          <span>Virtual Memory</span>
+          <strong>PASS</strong>
+        </div>
+
+        <div>
+          <span>Scheduler</span>
+          <strong>PASS</strong>
+        </div>
+
+        <div>
+          <span>Program Loader</span>
+          <strong>PASS</strong>
+        </div>
+
+        <div>
+          <span>VFS</span>
+          <strong>PASS</strong>
+        </div>
+      </div>
+
+      <div class="system-ok">
+        PASSED: 7 &nbsp;&nbsp; | &nbsp;&nbsp; FAILED: 0
+        <br /><br />
+        SYSTEM STATUS: OK
+      </div>
     </section>
-
 
     <!-- =========================
          DOWNLOAD
     ========================== -->
 
-    <section
-        class="download-section"
-        id="download"
-    >
+    <section class="download-section" id="download">
+      <div class="section-number">06 / RELEASE</div>
 
-        <div class="section-number">
-            06 / RELEASE
-        </div>
+      <h2>Get ValaOS 2.0</h2>
 
-        <h2>
-            Get ValaOS 2.0
-        </h2>
+      <p>
+        Download the ValaOS 2.0 ISO and explore the custom 32-bit x86 operating
+        system.
+      </p>
 
-        <p>
-            Download the ValaOS 2.0 ISO and explore
-            the custom 32-bit x86 operating system.
-        </p>
+      <a href="downloads/ValaOS-2.0.0.iso" class="download-button" download>
+        DOWNLOAD ValaOS 2.0.0
+      </a>
 
-        <a
-            href="downloads/ValaOS-2.0.0.iso"
-            class="download-button"
-            download
-        >
-            DOWNLOAD ValaOS 2.0.0
-        </a>
-
-        <div class="release-info">
-            32-BIT x86 &nbsp; • &nbsp;
-            ValaOS 2.0.0 &nbsp; • &nbsp;
-            ISO
-        </div>
-
+      <div class="release-info">
+        32-BIT x86 &nbsp; • &nbsp; ValaOS 2.0.0 &nbsp; • &nbsp; ISO
+      </div>
     </section>
 
+    <!-- =========================
+     DEVELOPER / CONTACT
+========================== -->
+
+    <section class="developer-section" id="developer">
+      <div class="section-number">07 / DEVELOPER</div>
+
+      <div class="developer-grid">
+        <div class="developer-intro">
+          <h3>Built by <span>Nehal Vala.</span></h3>
+
+          <div class="developer-role">
+            Computer Engineering Student • AI/ML Enthusiast • Systems &
+            Open-Source Developer
+          </div>
+
+          <p>
+            ValaOS is an independent operating system project created to explore
+            low-level computing, operating systems, memory management,
+            scheduling, user-mode execution and persistent storage.
+          </p>
+
+          <p>
+            I am open to internships, collaborations, open-source projects,
+            technical opportunities, and people interested in supporting the
+            development of ValaOS.
+          </p>
+
+          <div class="developer-links">
+            <a
+              href="https://github.com/nehalvala0005-cloud/ValaOS"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
+
+            <a
+              href="https://www.linkedin.com/in/nehal-vala-4859a0385/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              LinkedIn
+            </a>
+
+            <a href="mailto:nikhilvala0005@gmail.com"> Email </a>
+          </div>
+
+          <a class="contact-email" href="mailto:nikhilvala0005@gmail.com">
+            nikhilvala0005@gmail.com
+          </a>
+        </div>
+
+        <div class="contact-box" id="contact">
+          <h3>Contact Me</h3>
+
+          <p>
+            Having trouble downloading ValaOS? Found a bug? Want to collaborate?
+            Have an internship, project, or other opportunity? Send me a
+            message.
+          </p>
+
+          <form class="contact-form" id="contactForm">
+            <input type="text" name="name" placeholder="Your Name" required />
+
+            <input
+              type="email"
+              name="email"
+              placeholder="Your Email"
+              required
+            />
+
+            <input type="text" name="subject" placeholder="Subject" required />
+
+            <textarea
+              name="message"
+              placeholder="Write your message..."
+              required
+            ></textarea>
+
+            <button type="submit">SEND MESSAGE</button>
+
+            <div id="contactStatus" style="display: none"></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="opportunity-box">
+        <h3>Opportunities & Collaboration</h3>
+
+        <p>
+          I am currently open to opportunities where I can learn, contribute and
+          build real-world technology. If you are interested in working together
+          or have an opportunity related to software, AI/ML, systems,
+          open-source development or ValaOS, feel free to reach out.
+        </p>
+
+        <div class="opportunity-list">
+          <span>Internships</span>
+          <span>AI / ML</span>
+          <span>Software Development</span>
+          <span>Open Source</span>
+          <span>Systems Projects</span>
+          <span>Collaboration</span>
+          <span>Sponsorship</span>
+        </div>
+      </div>
+
+      <div class="opportunity-box">
+        <h3>Support ValaOS</h3>
+
+        <p>
+          ValaOS is an independent project built from scratch. If you are
+          interested in supporting its future development, sponsorship and
+          support options will be available here.
+        </p>
+
+        <a href="#contact" class="support-button" id="sponsorshipButton">
+          DISCUSS SPONSORSHIP
+        </a>
+      </div>
+    </section>
 
     <!-- =========================
          FOOTER
     ========================== -->
 
     <footer>
+      <div class="footer-logo">VALA<span style="color: #ff3344">OS</span></div>
 
-        <div class="footer-logo">
-            VALA<span style="color:#ff3344;">OS</span>
-        </div>
+      <p>A custom operating system built from scratch.</p>
 
-        <p>
-            A custom operating system built from scratch.
-        </p>
-
-        <a
-            href="https://github.com/nehalvala0005-cloud/ValaOS"
-            target="_blank"
-            rel="noopener noreferrer"
-        >
-            View Source on GitHub
-        </a>
-
+      <a
+        href="https://github.com/nehalvala0005-cloud/ValaOS"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        View Source on GitHub
+      </a>
     </footer>
-
 
     <!-- =========================
          JAVASCRIPT
     ========================== -->
 
-    <script
-        type="module"
-        src="js/main.js"
-    ></script>
-
-</body>
-
+    <script type="module" src="js/main.js"></script>
+  </body>
 </html>
