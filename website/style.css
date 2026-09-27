@@ -906,3 +906,120 @@ footer a {
         transition-duration: 0.01ms !important;
     }
 }
+
+.navbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar .brand img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
+.navbar .brand > span {
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  .navbar .brand {
+    gap: 7px;
+  }
+
+  .navbar .brand img {
+    width: 25px;
+    height: 25px;
+  }
+}
+.navbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.navbar .brand > span {
+  color: #ffffff;
+}
+
+.navbar .brand > span > span {
+  color: #ff3344;
+}
+
+.navbar .brand img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+.mobile-hero-logo {
+  display: none;
+}
+
+.mobile-hero-logo img {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  display: block;
+
+  transform-style: preserve-3d;
+
+  animation:
+    valaosLogoFloat 4s ease-in-out infinite,
+    valaosLogoTilt 6s ease-in-out infinite;
+
+  filter:
+    drop-shadow(0 0 8px rgba(255, 51, 68, 0.25))
+    drop-shadow(0 0 20px rgba(255, 51, 68, 0.12));
+}
+
+@keyframes valaosLogoFloat {
+
+  0%,
+  100% {
+    transform: translateY(0) rotateY(-8deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotateY(8deg);
+  }
+}
+
+@keyframes valaosLogoTilt {
+
+  0%,
+  100% {
+    filter:
+      drop-shadow(0 0 8px rgba(255, 51, 68, 0.2))
+      drop-shadow(0 0 20px rgba(255, 51, 68, 0.1));
+  }
+
+  50% {
+    filter:
+      drop-shadow(0 0 15px rgba(255, 51, 68, 0.45))
+      drop-shadow(0 0 35px rgba(255, 51, 68, 0.18));
+  }
+}
+
+@media (max-width: 600px) {
+
+  .mobile-hero-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    height: 145px;
+    margin-bottom: 10px;
+
+    perspective: 800px;
+  }
+
+  .mobile-hero-logo img {
+    width: 105px;
+    height: 105px;
+  }
+
+}
