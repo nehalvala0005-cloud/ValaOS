@@ -1048,3 +1048,29 @@ footer a {
         height: 78%;
     }
 }
+.status {
+    background: rgba(10, 12, 18, 0.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        0 8px 35px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    border-radius: 4px;
+}
+
+.system-ok {
+    background: rgba(10, 12, 18, 0.40);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(74, 222, 128, 0.45);
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.25),
+        0 0 18px rgba(74, 222, 128, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    border-radius: 4px;
+}
