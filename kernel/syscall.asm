@@ -23,7 +23,6 @@ syscall_exit:
     add esp, 32
     add esp, 20
 
-    sti
-
     mov esp, [user_return_esp]
+
     ret

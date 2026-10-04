@@ -10,16 +10,16 @@
       content="9tUyzU9UKnk_kRp_a7voL4x7Qu5w7G0goLyEtx9Xuj8"
     />
 
-    <title>ValaOS 2.0 — Custom 32-Bit x86 Operating System by Nehal Vala</title>
+    <title>ValaOS 3.0 — Custom 32-Bit x86 Operating System by Nehal Vala</title>
 
     <meta
       name="description"
-      content="ValaOS 2.0 is a custom 32-bit x86 operating system created by Nehal Vala. Built from scratch using C and x86 Assembly with paging, interrupts, scheduling, Ring 3 user mode, system calls, persistent VFS and a filesystem-backed program loader."
+      content="ValaOS 3.0 is a custom 32-bit x86 operating system created by Nehal Vala. Built from scratch using C and x86 Assembly with paging, interrupts, scheduling, Ring 3 user mode, system calls, persistent VFS, user program arguments and process management."
     />
 
     <meta
       name="keywords"
-      content="ValaOS, operating system, custom OS, x86 OS, 32-bit OS, C, Assembly, GRUB, QEMU, kernel, ValaOS 2.0"
+      content="ValaOS, operating system, custom OS, x86 OS, 32-bit OS, C, Assembly, GRUB, QEMU, kernel, ValaOS 3.0"
     />
 
     <meta name="author" content="Nehal Vala" />
@@ -36,12 +36,12 @@
 
     <meta
       property="og:title"
-      content="ValaOS 2.0 — Custom 32-Bit x86 Operating System"
+      content="ValaOS 3.0 — Custom 32-Bit x86 Operating System"
     />
 
     <meta
       property="og:description"
-      content="Explore ValaOS 2.0 — a custom 32-bit x86 operating system with memory management, paging, interrupts, scheduling, Ring 3 user mode, system calls and a persistent VFS."
+      content="Explore ValaOS 3.0 — a custom 32-bit x86 operating system with memory management, paging, interrupts, scheduling, Ring 3 user mode, system calls, persistent VFS, user program arguments and process management."
     />
 
     <meta property="og:type" content="website" />
@@ -78,6 +78,64 @@
     <link rel="stylesheet" href="style.css" />
 
     <style>
+      .release-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 28px;
+        margin-top: 45px;
+      }
+
+      .release-card {
+        padding: 34px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .release-card {
+        padding: 34px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.025);
+        transition: border-color 0.25s ease;
+      }
+
+      .release-card:hover {
+        border-color: rgba(255, 51, 68, 0.55);
+      }
+      .release-card h3 {
+        font-size: 32px;
+        margin: 12px 0 10px;
+      }
+
+      .release-card p {
+        margin-bottom: 22px;
+      }
+
+      .release-badge {
+        font-size: 11px;
+        letter-spacing: 2px;
+        font-weight: 700;
+        color: #ff3344;
+      }
+
+      .archived-release {
+        color: #888;
+      }
+
+      .release-card .release-info {
+        margin: 20px 0 24px;
+      }
+
+      .release-card .download-button[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      @media (max-width: 800px) {
+        .release-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .developer-section {
         position: relative;
         z-index: 5;
@@ -283,18 +341,17 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "ValaOS",
-        "alternateName": "ValaOS 2.0",
+        "alternateName": "ValaOS 3.0",
         "applicationCategory": "OperatingSystem",
         "operatingSystem": "x86",
-        "description": "ValaOS 2.0 is a custom 32-bit x86 operating system created by Nehal Vala and built from scratch using C and x86 Assembly.",
-        "softwareVersion": "2.0.0",
+        "description": "ValaOS 3.0 is a custom 32-bit x86 operating system created by Nehal Vala and built from scratch using C and x86 Assembly.",
+        "softwareVersion": "3.0.0",
         "author": {
           "@type": "Person",
           "name": "Nehal Vala",
           "url": "https://www.linkedin.com/in/nehal-vala-4859a0385/"
         },
         "codeRepository": "https://github.com/nehalvala0005-cloud/ValaOS",
-        "downloadUrl": "https://nehalvala0005-cloud.github.io/ValaOS/downloads/ValaOS-2.0.0.iso",
         "url": "https://nehalvala0005-cloud.github.io/ValaOS/"
       }
     </script>
@@ -304,9 +361,9 @@
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "ValaOS",
-        "alternateName": "ValaOS 2.0",
+        "alternateName": "ValaOS 3.0",
         "url": "https://nehalvala0005-cloud.github.io/ValaOS/",
-        "description": "ValaOS 2.0 — Custom 32-Bit x86 Operating System built from scratch using C and x86 Assembly."
+        "description": "ValaOS 3.0 — Custom 32-Bit x86 Operating System built from scratch using C and x86 Assembly."
       }
     </script>
   </head>
@@ -377,7 +434,7 @@
         </div>
       </div>
 
-      <div class="hero-version">ValaOS 2.0.0</div>
+      <div class="hero-version">ValaOS 3.0.0 • LATEST RELEASE</div>
     </section>
 
     <!-- =========================
@@ -484,6 +541,34 @@
 
           <p>User programs are loaded directly from the ValaOS filesystem.</p>
         </div>
+
+        <div class="feature-card">
+          <span>10</span>
+
+          <h3>Program Arguments</h3>
+
+          <p>
+            User programs receive argc and argv data through their user stack.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <span>11</span>
+
+          <h3>Process Management</h3>
+
+          <p>
+            PID allocation, process states, process history, ps, tasks and kill.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <span>12</span>
+
+          <h3>ValaOS 3.0 Validation</h3>
+
+          <p>Eight core system checks passed in the ValaOS 3.0 self-test.</p>
+        </div>
       </div>
     </section>
 
@@ -547,6 +632,10 @@
         <i>↓</i>
 
         <div>USER PROGRAMS</div>
+
+        <i>↓</i>
+
+        <div>PROCESS MANAGEMENT</div>
       </div>
     </section>
 
@@ -616,10 +705,15 @@
           <span>VFS</span>
           <strong>PASS</strong>
         </div>
+
+        <div>
+          <span>Process Management</span>
+          <strong>PASS</strong>
+        </div>
       </div>
 
       <div class="system-ok">
-        PASSED: 7 &nbsp;&nbsp; | &nbsp;&nbsp; FAILED: 0
+        PASSED: 8 &nbsp;&nbsp; | &nbsp;&nbsp; FAILED: 0
         <br /><br />
         SYSTEM STATUS: OK
       </div>
@@ -630,21 +724,44 @@
     ========================== -->
 
     <section class="download-section" id="download">
-      <div class="section-number">06 / RELEASE</div>
+      <div class="section-number">06 / RELEASES</div>
 
-      <h2>Get ValaOS 2.0</h2>
+      <h2>ValaOS Releases</h2>
 
       <p>
-        Download the ValaOS 2.0 ISO and explore the custom 32-bit x86 operating
-        system.
+        Choose the ValaOS release you want to explore. ValaOS 3.0 is the latest
+        release, while previous versions remain available in the archive.
       </p>
 
-      <a href="downloads/ValaOS-2.0.0.iso" class="download-button" download>
-        DOWNLOAD ValaOS 2.0.0
-      </a>
+      <div class="release-grid">
+        <div class="release-card latest-release">
+          <div class="release-badge">LATEST RELEASE</div>
+          <h3>ValaOS 3.0</h3>
+          <p>Userspace + Process Management</p>
+          <div class="release-info">
+            32-BIT x86 &nbsp; • &nbsp; ValaOS 3.0 &nbsp; • &nbsp; ISO
+          </div>
+          <a
+            href="downloads/ValaOS-3.0.iso"
+            class="download-button"
+            download
+            title="Download the ValaOS 3.0 ISO"
+          >
+            DOWNLOAD ValaOS 3.0
+          </a>
+        </div>
 
-      <div class="release-info">
-        32-BIT x86 &nbsp; • &nbsp; ValaOS 2.0.0 &nbsp; • &nbsp; ISO
+        <div class="release-card">
+          <div class="release-badge archived-release">PREVIOUS RELEASE</div>
+          <h3>ValaOS 2.0</h3>
+          <p>Kernel Core</p>
+          <div class="release-info">
+            32-BIT x86 &nbsp; • &nbsp; ValaOS 2.0.0 &nbsp; • &nbsp; ISO
+          </div>
+          <a href="downloads/ValaOS-2.0.0.iso" class="download-button" download>
+            DOWNLOAD ValaOS 2.0.0
+          </a>
+        </div>
       </div>
     </section>
 

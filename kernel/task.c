@@ -4,7 +4,7 @@
  * All rights reserved.
  */
 
- extern void print(const char* str);
+extern void print(const char *str);
 
 typedef unsigned int uint32_t;
 
@@ -14,8 +14,11 @@ typedef unsigned int uint32_t;
 #define TASK_TERMINATED "TERMINATED"
 
 #define TASK_STACK_SIZE 4096
+#define MAX_USER_PROCESSES 8
+#define USER_PROCESS_NAME_SIZE 32
 
-struct task_context {
+struct task_context
+{
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
@@ -29,13 +32,22 @@ struct task_context {
     uint32_t eflags;
 };
 
-struct task {
+struct task
+{
     uint32_t pid;
-    const char* name;
-    const char* state;
+    const char *name;
+    const char *state;
     uint32_t stack_base;
     uint32_t stack_top;
     struct task_context context;
+};
+
+struct user_process
+{
+    uint32_t pid;
+    char name[USER_PROCESS_NAME_SIZE];
+    const char *state;
+    int used;
 };
 
 void scheduler_tick();
@@ -46,41 +58,51 @@ static unsigned char task_stacks[3][TASK_STACK_SIZE]
 struct task tasks[] = {
     {1, "kernel", TASK_RUNNING, 0, 0, {0}},
     {2, "shell", TASK_READY, 0, 0, {0}},
-    {3, "idle", TASK_READY, 0, 0, {0}}
-};
+    {3, "idle", TASK_READY, 0, 0, {0}}};
+
+static struct user_process user_processes[MAX_USER_PROCESSES];
 
 int task_count = 3;
 int current_task = 0;
 
-static const char* user_task_state = TASK_READY;
+static const char *user_task_state = TASK_READY;
+static int active_user_process = -1;
+static uint32_t next_user_pid = 4;
 
 extern void keyboard_poll();
-extern void print(const char* str);
+extern void print(const char *str);
 
-void task_shell() {
+void task_shell()
+{
     static int started = 0;
 
-    if (!started) {
+    if (!started)
+    {
         started = 1;
         print("[ SCHED ] Shell task is now running\n");
     }
 
-    while (1) {
+    while (1)
+    {
         keyboard_poll();
     }
 }
 
-void task_idle() {
-    while (1) {
-        __asm__ volatile ("hlt");
+void task_idle()
+{
+    while (1)
+    {
+        __asm__ volatile("hlt");
     }
 }
 
-void task_context_init() {
+void task_context_init()
+{
     int i;
-    uint32_t* stack;
+    uint32_t *stack;
 
-    for (i = 0; i < task_count; i++) {
+    for (i = 0; i < task_count; i++)
+    {
         tasks[i].stack_base =
             (uint32_t)&task_stacks[i][0];
 
@@ -88,7 +110,7 @@ void task_context_init() {
             (uint32_t)&task_stacks[i][TASK_STACK_SIZE];
     }
 
-    stack = (uint32_t*)tasks[1].stack_top;
+    stack = (uint32_t *)tasks[1].stack_top;
     stack -= 11;
 
     stack[0] = 0;
@@ -108,7 +130,7 @@ void task_context_init() {
     tasks[1].context.cs = 0x10;
     tasks[1].context.eflags = 0x202;
 
-    stack = (uint32_t*)tasks[2].stack_top;
+    stack = (uint32_t *)tasks[2].stack_top;
     stack -= 11;
 
     stack[0] = 0;
@@ -127,30 +149,106 @@ void task_context_init() {
     tasks[2].context.eip = (uint32_t)task_idle;
     tasks[2].context.cs = 0x10;
     tasks[2].context.eflags = 0x202;
+
+    for (i = 0; i < MAX_USER_PROCESSES; i++)
+    {
+        user_processes[i].pid = 0;
+        user_processes[i].name[0] = '\0';
+        user_processes[i].state = TASK_TERMINATED;
+        user_processes[i].used = 0;
+    }
 }
 
-struct task* get_tasks() {
+struct task *get_tasks()
+{
     return tasks;
 }
 
-int get_task_count() {
+int get_task_count()
+{
     return task_count;
 }
 
-int task_kill(uint32_t pid) {
-    int i;
+struct user_process *get_user_processes()
+{
+    return user_processes;
+}
 
-    if (pid == 1 || pid == 2) {
-        return -1;
+int get_user_process_count()
+{
+    return MAX_USER_PROCESSES;
+}
+
+static void copy_process_name(char *destination, const char *source)
+{
+    int i = 0;
+
+    while (source[i] != '\0' &&
+           i < USER_PROCESS_NAME_SIZE - 1)
+    {
+        destination[i] = source[i];
+        i++;
     }
 
-    for (i = 0; i < task_count; i++) {
-        if (tasks[i].pid == pid) {
-            if (tasks[i].state[0] == 'T') {
-                return -2;
-            }
+    destination[i] = '\0';
+}
 
-            tasks[i].state = TASK_TERMINATED;
+int user_process_start(const char *name)
+{
+    int i;
+
+    for (i = 0; i < MAX_USER_PROCESSES; i++)
+    {
+        if (!user_processes[i].used)
+        {
+            user_processes[i].pid = next_user_pid++;
+            user_processes[i].state = TASK_RUNNING;
+            user_processes[i].used = 1;
+
+            copy_process_name(
+                user_processes[i].name,
+                name);
+
+            active_user_process = i;
+
+            return user_processes[i].pid;
+        }
+    }
+
+    return -1;
+}
+
+void user_process_exit() {
+    if (active_user_process >= 0 &&
+        active_user_process < MAX_USER_PROCESSES) {
+
+        user_processes[active_user_process].state =
+            TASK_TERMINATED;
+
+        active_user_process = -1;
+    }
+
+    user_task_state = TASK_TERMINATED;
+}
+
+int user_process_kill(uint32_t pid)
+{
+    int i;
+
+    for (i = 0; i < MAX_USER_PROCESSES; i++)
+    {
+        if (user_processes[i].used &&
+            user_processes[i].pid == pid)
+        {
+
+            if (user_processes[i].state == TASK_TERMINATED)
+                return -2;
+
+            user_processes[i].state = TASK_TERMINATED;
+
+            if (active_user_process == i)
+                user_task_state = TASK_TERMINATED;
+
             return 1;
         }
     }
@@ -158,11 +256,36 @@ int task_kill(uint32_t pid) {
     return 0;
 }
 
-void schedule_once() {
+int task_kill(uint32_t pid)
+{
+    int i;
+
+    if (pid == 1 || pid == 2)
+        return -1;
+
+    for (i = 0; i < task_count; i++)
+    {
+        if (tasks[i].pid == pid)
+        {
+
+            if (tasks[i].state[0] == 'T')
+                return -2;
+
+            tasks[i].state = TASK_TERMINATED;
+            return 1;
+        }
+    }
+
+    return user_process_kill(pid);
+}
+
+void schedule_once()
+{
     int i;
     int next_task = current_task;
 
-    for (i = 1; i <= 2; i++) {
+    for (i = 1; i <= 2; i++)
+    {
         next_task = current_task + i;
 
         if (next_task >= 2)
@@ -177,7 +300,8 @@ void schedule_once() {
 
     current_task = next_task;
 
-    for (i = 0; i < task_count; i++) {
+    for (i = 0; i < task_count; i++)
+    {
         if (tasks[i].state[0] != 'T')
             tasks[i].state = TASK_READY;
     }
@@ -185,7 +309,8 @@ void schedule_once() {
     tasks[current_task].state = TASK_RUNNING;
 }
 
-uint32_t task_switch_prepare(uint32_t current_esp) {
+uint32_t task_switch_prepare(uint32_t current_esp)
+{
     int previous_task = current_task;
 
     tasks[previous_task].context.esp = current_esp;
@@ -200,23 +325,40 @@ uint32_t task_switch_prepare(uint32_t current_esp) {
 
 static uint32_t scheduler_tick_counter = 0;
 
-void scheduler_tick() {
+void scheduler_tick()
+{
     scheduler_tick_counter++;
 
-    if (scheduler_tick_counter >= 1) {
+    if (scheduler_tick_counter >= 1)
+    {
         scheduler_tick_counter = 0;
         schedule_once();
     }
 }
 
-void user_task_start() {
+void user_task_start()
+{
     user_task_state = TASK_RUNNING;
 }
 
-void user_task_exit() {
-    user_task_state = TASK_TERMINATED;
+extern int user_process_start(const char *name);
+extern struct user_process *get_user_processes();
+extern int get_user_process_count();
+
+void user_task_exit()
+{
+    user_process_exit();
 }
 
-const char* get_user_task_state() {
+const char *get_user_task_state()
+{
     return user_task_state;
+}
+
+int is_user_task_running()
+{
+    if (user_task_state == TASK_RUNNING)
+        return 1;
+
+    return 0;
 }

@@ -1,6 +1,7 @@
 section .text
 
 global page_fault_isr
+
 extern page_fault_handler
 
 page_fault_isr:
@@ -16,4 +17,5 @@ page_fault_isr:
     popa
 
     add esp, 4
+
     iretd

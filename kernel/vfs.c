@@ -352,6 +352,31 @@ void vfs_list() {
     }
 }
 
+int vfs_list_dir(const char* name) {
+    int index;
+    int i;
+
+    index = vfs_find_child(current_dir, name);
+
+    if (index < 0 || !entries[index].is_dir)
+        return 0;
+
+    print("NAME\n");
+
+    for (i = 0; i < VFS_MAX_ENTRIES; i++) {
+        if (entries[i].used && entries[i].parent == index) {
+            print(entries[i].name);
+
+            if (entries[i].is_dir)
+                print("/");
+
+            print("\n");
+        }
+    }
+
+    return 1;
+}
+
 int vfs_cat(const char* name) {
     int index = vfs_find_child(current_dir, name);
     int i;

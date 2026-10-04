@@ -11,5 +11,7 @@ export const architecture = [
     "Ring 3 User Mode",
     "System Calls",
     "Virtual Filesystem",
-    "User Programs"
+    "User Program Loader",
+    "Program Arguments",
+    "Process Management"
 ];

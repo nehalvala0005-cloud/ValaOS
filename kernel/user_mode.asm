@@ -10,6 +10,8 @@ enter_user_mode:
     mov eax, esp
     mov [user_return_esp], eax
 
+    mov edx, [esp + 4]
+
     cli
 
     mov ax, 0x23
@@ -19,7 +21,7 @@ enter_user_mode:
     mov gs, ax
 
     push dword 0x23
-    push dword 0x00801000
+    push edx
 
     pushfd
 

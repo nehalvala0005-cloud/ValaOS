@@ -6,7 +6,7 @@ export function initTerminal() {
 
     const lines = [
         {
-            text: "ValaOS 2.0 Booting...",
+            text: "ValaOS 3.0 Booting...",
             type: "title"
         },
         {
@@ -54,7 +54,15 @@ export function initTerminal() {
             type: "success"
         },
         {
-            text: "[ OK ]  User programs",
+            text: "[ OK ]  User programs + arguments",
+            type: "success"
+        },
+        {
+            text: "[ OK ]  Process management",
+            type: "success"
+        },
+        {
+            text: "[ OK ]  Self-test: 8/8 passed",
             type: "success"
         },
         {
@@ -66,7 +74,7 @@ export function initTerminal() {
             type: "status"
         },
         {
-            text: "ValaOS 2.0 Ready.",
+            text: "ValaOS 3.0 Ready.",
             type: "ready"
         },
         {
@@ -82,7 +90,7 @@ export function initTerminal() {
             type: "normal"
         },
         {
-            text: "test",
+            text: "args",
             type: "normal"
         },
         {
@@ -108,6 +116,18 @@ export function initTerminal() {
         {
             text: "[ OK ]  User task terminated",
             type: "success"
+        },
+        {
+            text: "ValaOS> ps",
+            type: "command"
+        },
+        {
+            text: "4     hello      TERMINATED",
+            type: "normal"
+        },
+        {
+            text: "5     args       TERMINATED",
+            type: "normal"
         }
     ];
 

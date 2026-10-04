@@ -1,4 +1,5 @@
 export const commands = [
+    "help",
     "info",
     "about",
     "clear",
@@ -29,5 +30,6 @@ export const commands = [
     "rm",
     "run",
     "programs",
+    "kill",
     "selftest"
 ];

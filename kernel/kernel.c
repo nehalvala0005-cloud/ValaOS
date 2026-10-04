@@ -22,7 +22,7 @@ extern int map_page_flags(
     unsigned int flags
 );
 
-extern void enter_user_mode();
+extern void enter_user_mode(unsigned int user_esp);
 extern void enter_user_program(unsigned int address);
 extern void user_task_start();
 extern int vfs_read_file(const char* name, char* buffer, int max_size);
@@ -30,6 +30,12 @@ extern int vfs_read_file(const char* name, char* buffer, int max_size);
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
 #define PAGE_USER 0x004
+
+#define MAX_COMMAND_ARGS 8
+#define MAX_COMMAND_ARG_LEN 64
+
+#define USER_STACK_BASE 0x00800000
+#define USER_STACK_SIZE 4096
 
 static unsigned char user_code_page[4096]
     __attribute__((aligned(4096)));
@@ -40,7 +46,7 @@ static unsigned char user_test_page[4096]
 static unsigned char user_stack_page[4096]
     __attribute__((aligned(4096)));
 
-    static int hex_value(char c) {
+static int hex_value(char c) {
     if (c >= '0' && c <= '9')
         return c - '0';
 
@@ -53,7 +59,7 @@ static unsigned char user_stack_page[4096]
     return -1;
 }
 
-    int load_user_program(const char* name) {
+int load_user_program(const char* name) {
     static char hex_data[256];
     int length;
     int i;
@@ -91,6 +97,85 @@ static unsigned char user_stack_page[4096]
     return 1;
 }
 
+static int prepare_user_arguments(
+    int argc,
+    char args[][MAX_COMMAND_ARG_LEN],
+    unsigned int* user_esp
+) {
+    unsigned int stack_pos;
+    unsigned int string_pos;
+    unsigned int string_addresses[MAX_COMMAND_ARGS];
+    unsigned int* stack;
+    int i;
+    int j;
+    int length;
+
+    if (argc <= 0 || argc > MAX_COMMAND_ARGS)
+        return 0;
+
+    for (i = 0; i < USER_STACK_SIZE; i++)
+        user_stack_page[i] = 0;
+
+    stack_pos = USER_STACK_SIZE;
+    string_pos = USER_STACK_SIZE;
+
+    for (i = argc - 1; i >= 0; i--) {
+        length = 0;
+
+        while (args[i][length] != '\0' &&
+               length < MAX_COMMAND_ARG_LEN - 1)
+            length++;
+
+        if (string_pos < (unsigned int)(length + 1))
+            return 0;
+
+        string_pos -= length + 1;
+
+        for (j = 0; j < length; j++)
+            user_stack_page[string_pos + j] = args[i][j];
+
+        user_stack_page[string_pos + length] = '\0';
+
+        string_addresses[i] = USER_STACK_BASE + string_pos;
+    }
+
+    stack_pos = string_pos;
+    stack_pos &= ~3;
+
+    if (stack_pos < (unsigned int)((argc + 2) * 4))
+        return 0;
+
+    stack_pos -= (argc + 2) * 4;
+
+    stack = (unsigned int*)(user_stack_page + stack_pos);
+
+    stack[0] = argc;
+
+    for (i = 0; i < argc; i++)
+        stack[i + 1] = string_addresses[i];
+
+    stack[argc + 1] = 0;
+
+    *user_esp = USER_STACK_BASE + stack_pos;
+
+    return 1;
+}
+
+int load_user_program_args(
+    const char* name,
+    int argc,
+    char args[][MAX_COMMAND_ARG_LEN],
+    unsigned int* user_esp
+) {
+    if (!load_user_program(name))
+        return 0;
+
+    if (!prepare_user_arguments(argc, args, user_esp))
+        return 0;
+
+    return 1;
+}
+
 void user_mode_init() {
 
     user_code_page[0] = 0xB8;
@@ -123,7 +208,6 @@ void user_mode_init() {
     user_code_page[21] = 0xEB;
     user_code_page[22] = 0xFE;
 
-
     user_test_page[0] = 0xB8;
     user_test_page[1] = 0x01;
     user_test_page[2] = 0x00;
@@ -153,7 +237,6 @@ void user_mode_init() {
 
     user_test_page[21] = 0xEB;
     user_test_page[22] = 0xFE;
-
 
     map_page_flags(
         (unsigned int*)0x00400000,

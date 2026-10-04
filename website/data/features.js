@@ -22,7 +22,7 @@ export const features = [
     {
         name: "Task Scheduler",
         description:
-            "PID-based task management with timer-driven context switching."
+            "Timer-driven scheduling for the kernel task environment."
     },
     {
         name: "Ring 3 User Mode",
@@ -43,5 +43,20 @@ export const features = [
         name: "Program Loader",
         description:
             "User programs are loaded directly from the ValaOS filesystem."
+    },
+    {
+        name: "Program Arguments",
+        description:
+            "User programs receive argc and argv data through their user stack."
+    },
+    {
+        name: "Process Management",
+        description:
+            "PID allocation, lifecycle states, process history, ps, tasks and kill."
+    },
+    {
+        name: "ValaOS 3.0 Self-Test",
+        description:
+            "Eight core system checks passed with zero failures."
     }
 ];
