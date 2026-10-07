@@ -32,6 +32,23 @@ struct task_context
     uint32_t eflags;
 };
 
+struct user_context
+{
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t ebp;
+    uint32_t esp;
+    uint32_t ebx;
+    uint32_t edx;
+    uint32_t ecx;
+    uint32_t eax;
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+    uint32_t user_esp;
+    uint32_t user_ss;
+};
+
 struct task
 {
     uint32_t pid;
@@ -49,6 +66,7 @@ struct user_process
     const char *state;
     int used;
     struct task_context context;
+    struct user_context user_context;
     uint32_t stack_base;
     uint32_t stack_top;
 };
@@ -386,6 +404,52 @@ void user_task_exit()
 const char *get_user_task_state()
 {
     return user_task_state;
+}
+
+void user_context_save(uint32_t *frame)
+{
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
+        return;
+
+    user_processes[active_user_process].user_context.edi =
+        frame[0];
+
+    user_processes[active_user_process].user_context.esi =
+        frame[1];
+
+    user_processes[active_user_process].user_context.ebp =
+        frame[2];
+
+    user_processes[active_user_process].user_context.esp =
+        frame[3];
+
+    user_processes[active_user_process].user_context.ebx =
+        frame[4];
+
+    user_processes[active_user_process].user_context.edx =
+        frame[5];
+
+    user_processes[active_user_process].user_context.ecx =
+        frame[6];
+
+    user_processes[active_user_process].user_context.eax =
+        frame[7];
+
+    user_processes[active_user_process].user_context.eip =
+        frame[8];
+
+    user_processes[active_user_process].user_context.cs =
+        frame[9];
+
+    user_processes[active_user_process].user_context.eflags =
+        frame[10];
+
+    user_processes[active_user_process].user_context.user_esp =
+        frame[11];
+
+    user_processes[active_user_process].user_context.user_ss =
+        frame[12];
 }
 
 int is_user_task_running()
