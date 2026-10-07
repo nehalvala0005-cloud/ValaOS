@@ -435,6 +435,14 @@ void user_context_save(uint32_t *frame)
     user_processes[active_user_process].user_context.user_ss =
         frame[12];
 }
+struct user_context *get_active_user_context()
+{
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
+        return 0;
+
+    return &user_processes[active_user_process].user_context;
+}
 
 int is_user_task_running()
 {
