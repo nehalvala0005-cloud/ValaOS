@@ -48,11 +48,17 @@ struct user_process
     char name[USER_PROCESS_NAME_SIZE];
     const char *state;
     int used;
+    struct task_context context;
+    uint32_t stack_base;
+    uint32_t stack_top;
 };
 
 void scheduler_tick();
 
 static unsigned char task_stacks[3][TASK_STACK_SIZE]
+    __attribute__((aligned(16)));
+
+static unsigned char user_task_stacks[MAX_USER_PROCESSES][TASK_STACK_SIZE]
     __attribute__((aligned(16)));
 
 struct task tasks[] = {
@@ -156,6 +162,15 @@ void task_context_init()
         user_processes[i].name[0] = '\0';
         user_processes[i].state = TASK_TERMINATED;
         user_processes[i].used = 0;
+        user_processes[i].context.esp = 0;
+        user_processes[i].context.eip = 0;
+        user_processes[i].context.cs = 0;
+        user_processes[i].context.eflags = 0;
+        user_processes[i].stack_base =
+            (uint32_t)&user_task_stacks[i][0];
+
+        user_processes[i].stack_top =
+            (uint32_t)&user_task_stacks[i][TASK_STACK_SIZE];
     }
 }
 
@@ -218,9 +233,11 @@ int user_process_start(const char *name)
     return -1;
 }
 
-void user_process_exit() {
+void user_process_exit()
+{
     if (active_user_process >= 0 &&
-        active_user_process < MAX_USER_PROCESSES) {
+        active_user_process < MAX_USER_PROCESSES)
+    {
 
         user_processes[active_user_process].state =
             TASK_TERMINATED;
