@@ -237,7 +237,10 @@ int user_process_start(const char *name)
             user_processes[i].pid = next_user_pid++;
             user_processes[i].state = TASK_RUNNING;
             user_processes[i].used = 1;
-            user_processes[i].user_context.eip = 0x00400000;
+            if (i == 0)
+                user_processes[i].user_context.eip = 0x00400000;
+            else
+                user_processes[i].user_context.eip = 0x00500000;
             user_processes[i].user_context.cs = 0x1B;
             user_processes[i].user_context.eflags = 0x202;
             user_processes[i].user_context.user_esp = 0x00801000;
