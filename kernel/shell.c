@@ -96,6 +96,7 @@ extern void outb(uint16_t port, uint8_t value);
 extern void print(const char *str);
 extern void putchar(char c);
 extern int user_process_start(const char* name);
+extern int user_schedule_next();
 extern struct user_process* get_user_processes();
 extern int get_user_process_count();
 extern void clear_screen();
@@ -450,6 +451,7 @@ void execute_command()
         print("tasks\n");
         print("ticks\n");
         print("schedule\n");
+        print("proctest\n");
         print("run hello\n");
         print("ls [directory]\n");
         print("cat <file>\n");
@@ -1002,6 +1004,46 @@ void execute_command()
 
         print("Scheduler cycle complete.\n");
     }
+    else if (compare(command, "proctest"))
+{
+    int pid1;
+    int pid2;
+
+    pid1 = user_process_start("test1");
+
+    if (pid1 < 0)
+    {
+        print("[ ERROR ] Process table full\n");
+        goto command_done;
+    }
+
+    pid2 = user_process_start("test2");
+
+    if (pid2 < 0)
+    {
+        print("[ ERROR ] Second process could not start\n");
+        goto command_done;
+    }
+
+    print("[ PROCESS ] PID ");
+    print_number(pid1);
+    print(" created\n");
+
+    print("[ PROCESS ] PID ");
+    print_number(pid2);
+    print(" created\n");
+
+    print("[ SCHED ] Switching to next user process\n");
+
+if (user_schedule_next())
+{
+    print("[ SCHED ] User process switched\n");
+}
+else
+{
+    print("[ SCHED ] No next user process\n");
+}
+}
     else if (compare(command, "run"))
     {
         char file_name[40];
