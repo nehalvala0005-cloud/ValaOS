@@ -6,6 +6,7 @@ extern timer_handler
 extern is_user_task_running
 extern task_switch_prepare
 extern user_context_save
+extern user_context_restore
 
 timer_isr:
     pusha
@@ -29,6 +30,11 @@ timer_isr:
     mov eax, esp
     push eax
     call user_context_save
+    add esp, 4
+
+    mov eax, esp
+    push eax
+    call user_context_restore
     add esp, 4
 
     popa

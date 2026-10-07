@@ -443,7 +443,29 @@ struct user_context *get_active_user_context()
 
     return &user_processes[active_user_process].user_context;
 }
+void user_context_restore(uint32_t *frame)
+{
+    struct user_context *context;
 
+    context = get_active_user_context();
+
+    if (context == 0)
+        return;
+
+    frame[0] = context->edi;
+    frame[1] = context->esi;
+    frame[2] = context->ebp;
+    frame[3] = 0;
+    frame[4] = context->ebx;
+    frame[5] = context->edx;
+    frame[6] = context->ecx;
+    frame[7] = context->eax;
+    frame[8] = context->eip;
+    frame[9] = context->cs;
+    frame[10] = context->eflags;
+    frame[11] = context->user_esp;
+    frame[12] = context->user_ss;
+}
 int is_user_task_running()
 {
     if (user_task_state == TASK_RUNNING)
