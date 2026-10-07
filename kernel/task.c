@@ -237,6 +237,19 @@ int user_process_start(const char *name)
             user_processes[i].pid = next_user_pid++;
             user_processes[i].state = TASK_RUNNING;
             user_processes[i].used = 1;
+            user_processes[i].user_context.eip = 0x00400000;
+            user_processes[i].user_context.cs = 0x1B;
+            user_processes[i].user_context.eflags = 0x202;
+            user_processes[i].user_context.user_esp = 0x00801000;
+            user_processes[i].user_context.user_ss = 0x23;
+            user_processes[i].user_context.edi = 0;
+            user_processes[i].user_context.esi = 0;
+            user_processes[i].user_context.ebp = 0;
+            user_processes[i].user_context.esp = 0;
+            user_processes[i].user_context.ebx = 0;
+            user_processes[i].user_context.edx = 0;
+            user_processes[i].user_context.ecx = 0;
+            user_processes[i].user_context.eax = 0;
 
             copy_process_name(
                 user_processes[i].name,
@@ -249,6 +262,39 @@ int user_process_start(const char *name)
     }
 
     return -1;
+}
+int user_process_schedule_next()
+{
+    int i;
+    int next;
+
+    if (active_user_process < 0)
+        return -1;
+
+    for (i = 1; i <= MAX_USER_PROCESSES; i++)
+    {
+        next = active_user_process + i;
+
+        if (next >= MAX_USER_PROCESSES)
+            next -= MAX_USER_PROCESSES;
+
+        if (user_processes[next].used &&
+            user_processes[next].state != TASK_TERMINATED &&
+            user_processes[next].user_context.eip != 0)
+        {
+            user_processes[active_user_process].state =
+                TASK_READY;
+
+            active_user_process = next;
+
+            user_processes[active_user_process].state =
+                TASK_RUNNING;
+
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 void user_process_exit()
