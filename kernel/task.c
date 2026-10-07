@@ -403,7 +403,47 @@ uint32_t task_switch_prepare(uint32_t current_esp)
 
     return tasks[current_task].context.esp;
 }
+int user_schedule_next()
+{
+    int i;
+    int next;
 
+    if (active_user_process < 0)
+        return 0;
+
+    for (i = 1; i <= MAX_USER_PROCESSES; i++)
+    {
+        next = active_user_process + i;
+
+        if (next >= MAX_USER_PROCESSES)
+            next -= MAX_USER_PROCESSES;
+
+        if (user_processes[next].used &&
+            user_processes[next].state != TASK_TERMINATED &&
+            user_processes[next].user_context.eip != 0)
+        {
+            user_processes[active_user_process].state =
+                TASK_READY;
+
+            active_user_process = next;
+
+            user_processes[active_user_process].state =
+                TASK_RUNNING;
+
+            return 1;
+        }
+    }
+
+    return 0;
+}
+struct user_context *get_next_user_context()
+{
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
+        return 0;
+
+    return &user_processes[active_user_process].user_context;
+}
 static uint32_t scheduler_tick_counter = 0;
 
 void scheduler_tick()

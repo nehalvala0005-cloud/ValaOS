@@ -7,6 +7,7 @@ extern is_user_task_running
 extern task_switch_prepare
 extern user_context_save
 extern user_context_restore
+extern user_schedule_next
 
 timer_isr:
     pusha
@@ -31,6 +32,8 @@ timer_isr:
     push eax
     call user_context_save
     add esp, 4
+
+    call user_schedule_next
 
     mov eax, esp
     push eax
