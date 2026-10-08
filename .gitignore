@@ -1,4 +1,8 @@
 build/
 backup/
 *.o
-*.isokernel/timer.asm.a4_backup
+*.iso
+kernel/timer.asm.a4_backup
+
+# ValaOS temporary backups
+kernel/*.a4_backup

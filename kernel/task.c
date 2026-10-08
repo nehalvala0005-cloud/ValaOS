@@ -65,6 +65,7 @@ struct user_process
     char name[USER_PROCESS_NAME_SIZE];
     const char *state;
     int used;
+    uint32_t cr3;
     struct task_context context;
     struct user_context user_context;
     uint32_t stack_base;
@@ -98,6 +99,8 @@ static uint32_t next_user_pid = 4;
 
 extern void keyboard_poll();
 extern void print(const char *str);
+extern uint32_t get_page_directory();
+extern void switch_page_directory(uint32_t cr3);
 
 void task_shell()
 {
@@ -183,6 +186,7 @@ void task_context_init()
         user_processes[i].name[0] = '\0';
         user_processes[i].state = TASK_TERMINATED;
         user_processes[i].used = 0;
+        user_processes[i].cr3 = 0;
         user_processes[i].context.esp = 0;
         user_processes[i].context.eip = 0;
         user_processes[i].context.cs = 0;
@@ -240,6 +244,7 @@ int user_process_start(const char *name)
             user_processes[i].pid = next_user_pid++;
             user_processes[i].state = TASK_RUNNING;
             user_processes[i].used = 1;
+            user_processes[i].cr3 = get_page_directory();
             if (i == 0)
                 user_processes[i].user_context.eip = 0x00400000;
             else
@@ -452,11 +457,19 @@ struct user_context *get_next_user_context()
 }
 int user_process_switch()
 {
+    struct user_context *context;
+
     if (user_schedule_next() != 1)
         return 0;
 
-    if (get_next_user_context() == 0)
+    context = get_next_user_context();
+
+    if (context == 0)
         return 0;
+
+    switch_page_directory(
+        user_processes[active_user_process].cr3
+    );
 
     return 1;
 }

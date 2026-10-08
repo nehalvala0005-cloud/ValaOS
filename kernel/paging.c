@@ -330,3 +330,26 @@ void enable_write_protection() {
         : "r"(cr0)
     );
 }
+uint32_t get_page_directory()
+{
+    uint32_t cr3;
+
+    __asm__ volatile (
+        "mov %%cr3, %0"
+        : "=r"(cr3)
+    );
+
+    return cr3;
+}
+void switch_page_directory(uint32_t cr3)
+{
+    if (!cr3)
+        return;
+
+    __asm__ volatile (
+        "mov %0, %%cr3"
+        :
+        : "r"(cr3)
+        : "memory"
+    );
+}
