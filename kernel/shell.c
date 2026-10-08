@@ -97,6 +97,7 @@ extern void print(const char *str);
 extern void putchar(char c);
 extern int user_process_start(const char* name);
 extern int user_schedule_next();
+extern int user_process_switch();
 extern struct user_process* get_user_processes();
 extern int get_user_process_count();
 extern void clear_screen();
@@ -1035,13 +1036,13 @@ void execute_command()
 
     print("[ SCHED ] Switching to next user process\n");
 
-if (user_schedule_next())
+if (user_process_switch())
 {
     print("[ SCHED ] User process switched\n");
 }
 else
 {
-    print("[ SCHED ] No next user process\n");
+    print("[ SCHED ] User process switch failed\n");
 }
 }
     else if (compare(command, "run"))

@@ -447,6 +447,16 @@ struct user_context *get_next_user_context()
 
     return &user_processes[active_user_process].user_context;
 }
+int user_process_switch()
+{
+    if (user_schedule_next() != 1)
+        return 0;
+
+    if (get_next_user_context() == 0)
+        return 0;
+
+    return 1;
+}
 static uint32_t scheduler_tick_counter = 0;
 
 void scheduler_tick()
