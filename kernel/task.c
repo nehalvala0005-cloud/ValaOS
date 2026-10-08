@@ -73,6 +73,9 @@ struct user_process
 
 void scheduler_tick();
 
+void user_context_save(uint32_t *frame);
+void user_context_restore(uint32_t *frame);
+
 static unsigned char task_stacks[3][TASK_STACK_SIZE]
     __attribute__((aligned(16)));
 
@@ -454,6 +457,20 @@ int user_process_switch()
 
     if (get_next_user_context() == 0)
         return 0;
+
+    return 1;
+}
+int user_context_switch_prepare(uint32_t *frame)
+{
+    if (active_user_process < 0)
+        return 0;
+
+    user_context_save(frame);
+
+    if (!user_process_switch())
+        return 0;
+
+    user_context_restore(frame);
 
     return 1;
 }
