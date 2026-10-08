@@ -1,4 +1,4 @@
 build/
 backup/
 *.o
-*.iso
+*.isokernel/timer.asm.a4_backup
