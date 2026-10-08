@@ -17,7 +17,8 @@ struct allocation {
     int used;
 };
 
-static unsigned char heap[TOTAL_MEMORY];
+static unsigned char heap[TOTAL_MEMORY]
+    __attribute__((aligned(PAGE_SIZE)));
 static unsigned char page_bitmap[TOTAL_PAGES / 8];
 
 static struct allocation allocations[MAX_ALLOCATIONS];

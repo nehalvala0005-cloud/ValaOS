@@ -6,6 +6,9 @@
 
  typedef unsigned int uint32_t;
 
+extern void* page_alloc(uint32_t pages);
+extern void page_free(void* address, uint32_t pages);
+
 #define PAGE_SIZE 4096
 #define INITIAL_PAGE_TABLES 4
 #define MAX_DYNAMIC_TABLES 12
@@ -352,4 +355,87 @@ void switch_page_directory(uint32_t cr3)
         : "r"(cr3)
         : "memory"
     );
+}
+
+uint32_t paging_get_kernel_directory()
+{
+    return (uint32_t)&page_directory[0];
+}
+
+uint32_t paging_create_process_directory(
+    uint32_t code_page,
+    uint32_t stack_page)
+{
+    uint32_t *directory;
+    uint32_t *table1;
+    uint32_t *table2;
+    uint32_t i;
+
+    directory = (uint32_t *)page_alloc(1);
+
+    if (!directory)
+        return 0;
+
+    table1 = (uint32_t *)page_alloc(1);
+
+    if (!table1)
+    {
+        page_free(directory, 1);
+        return 0;
+    }
+
+    table2 = (uint32_t *)page_alloc(1);
+
+    if (!table2)
+    {
+        page_free(table1, 1);
+        page_free(directory, 1);
+        return 0;
+    }
+
+    for (i = 0; i < 1024; i++)
+    {
+        directory[i] = 0;
+        table1[i] = 0;
+        table2[i] = 0;
+    }
+
+    for (i = 0; i < 1024; i++)
+        directory[i] = page_directory[i];
+
+    for (i = 0; i < 1024; i++)
+    {
+        table1[i] = page_tables[1][i];
+        table2[i] = page_tables[2][i];
+    }
+
+    table1[0] =
+        (code_page & 0xFFFFF000) |
+        PAGE_PRESENT |
+        PAGE_USER;
+
+    table1[256] =
+        (code_page & 0xFFFFF000) |
+        PAGE_PRESENT |
+        PAGE_USER;
+
+    table2[0] =
+        (stack_page & 0xFFFFF000) |
+        PAGE_PRESENT |
+        PAGE_WRITABLE |
+        PAGE_USER;
+
+    directory[1] =
+        ((uint32_t)table1 & 0xFFFFF000) |
+        PAGE_PRESENT |
+        PAGE_WRITABLE |
+        PAGE_USER;
+
+    directory[2] =
+        ((uint32_t)table2 & 0xFFFFF000) |
+        PAGE_PRESENT |
+        PAGE_WRITABLE |
+        PAGE_USER;
+
+    return (uint32_t)directory;
 }

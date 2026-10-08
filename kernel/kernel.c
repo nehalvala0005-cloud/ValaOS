@@ -25,6 +25,9 @@ extern int map_page_flags(
 extern void enter_user_mode(unsigned int user_esp);
 extern void enter_user_program(unsigned int address);
 extern void user_task_start();
+extern void user_process_copy_memory(
+    const void *code_source,
+    const void *stack_source);
 extern int vfs_read_file(const char* name, char* buffer, int max_size);
 
 #define PAGE_PRESENT 0x001

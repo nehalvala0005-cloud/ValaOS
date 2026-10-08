@@ -66,6 +66,8 @@ struct user_process
     const char *state;
     int used;
     uint32_t cr3;
+    uint32_t code_page;
+    uint32_t stack_page;
     struct task_context context;
     struct user_context user_context;
     uint32_t stack_base;
@@ -306,6 +308,43 @@ int user_process_schedule_next()
     }
 
     return 0;
+}
+
+
+void user_process_copy_memory(
+    const void *code_source,
+    const void *stack_source)
+{
+    unsigned char *code_destination;
+    unsigned char *stack_destination;
+    const unsigned char *code;
+    const unsigned char *stack;
+    uint32_t i;
+
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
+        return;
+
+    if (!user_processes[active_user_process].used)
+        return;
+
+    code_destination =
+        (unsigned char *)user_processes[active_user_process].code_page;
+
+    stack_destination =
+        (unsigned char *)user_processes[active_user_process].stack_page;
+
+    code = (const unsigned char *)code_source;
+    stack = (const unsigned char *)stack_source;
+
+    for (i = 0; i < 4096; i++)
+    {
+        code_destination[i] = code[i];
+        stack_destination[i] = stack[i];
+    }
+
+    switch_page_directory(
+        user_processes[active_user_process].cr3);
 }
 
 void user_process_exit()
