@@ -60,6 +60,8 @@ extern unsigned int memory_total();
 extern unsigned int memory_page_size();
 extern unsigned int memory_total_pages();
 extern unsigned int memory_used_pages();
+extern void* page_alloc(unsigned int pages);
+extern void page_free(void* address, unsigned int pages);
 extern int paging_enabled();
 extern int map_page(unsigned int virtual_address, unsigned int physical_address);
 extern int unmap_page(unsigned int virtual_address);
@@ -1005,7 +1007,45 @@ void execute_command()
 
         print("Scheduler cycle complete.\n");
     }
-    else if (compare(command, "proctest"))
+    else if (compare(command, "pagetest"))
+{
+    void *page1;
+    void *page2;
+
+    print("[ PAGE ] Allocating 1 page\n");
+    page1 = page_alloc(1);
+
+    if (!page1)
+    {
+        print("[ FAIL ] 1-page allocation failed\n");
+    }
+    else
+    {
+        print("[ OK ] 1-page allocation\n");
+    }
+
+    print("[ PAGE ] Allocating 2 pages\n");
+    page2 = page_alloc(2);
+
+    if (!page2)
+    {
+        print("[ FAIL ] 2-page allocation failed\n");
+    }
+    else
+    {
+        print("[ OK ] 2-page allocation\n");
+    }
+
+    if (page1)
+        page_free(page1, 1);
+
+    if (page2)
+        page_free(page2, 2);
+
+    print("[ OK ] Pages released\n");
+}
+
+else if (compare(command, "proctest"))
 {
     int pid1;
     int pid2;
