@@ -7,6 +7,7 @@ extern is_user_task_running
 extern task_switch_prepare
 extern user_context_save
 extern user_context_restore
+extern user_context_switch_prepare
 extern user_schedule_next
 extern get_next_user_context
 
@@ -31,23 +32,11 @@ timer_isr:
 .user_task:
     mov eax, esp
     push eax
-    call user_context_save
+    call user_context_switch_prepare
     add esp, 4
 
-    call user_schedule_next
-    cmp eax, 1
-    jne .user_restore
-
-    call get_next_user_context
-    test eax, eax
-    jz .user_restore
-
-    push eax
-    mov eax, esp
-    add eax, 4
-    push eax
-    call user_context_restore
-    add esp, 8
+    popa
+    iretd
 
 .user_restore:
     popa
