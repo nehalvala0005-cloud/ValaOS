@@ -103,6 +103,7 @@ void* page_alloc(uint32_t pages) {
 void page_free(void* address, uint32_t pages) {
     uint32_t page;
     uint32_t i;
+    int slot;
 
     if (address == 0 || pages == 0)
         return;
@@ -118,8 +119,28 @@ void page_free(void* address, uint32_t pages) {
     if (((unsigned char*)address - heap) % PAGE_SIZE != 0)
         return;
 
+    slot = -1;
+
+    for (i = 0; i < MAX_ALLOCATIONS; i++)
+    {
+        if (allocations[i].used &&
+            allocations[i].start_page == page &&
+            allocations[i].page_count == pages)
+        {
+            slot = i;
+            break;
+        }
+    }
+
+    if (slot < 0)
+        return;
+
     for (i = 0; i < pages; i++)
         set_page_free(page + i);
+
+    allocations[slot].start_page = 0;
+    allocations[slot].page_count = 0;
+    allocations[slot].used = 0;
 
     if (allocated_pages >= pages)
         allocated_pages -= pages;

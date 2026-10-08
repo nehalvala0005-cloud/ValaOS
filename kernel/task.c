@@ -103,6 +103,8 @@ extern void keyboard_poll();
 extern void print(const char *str);
 extern uint32_t get_page_directory();
 extern void switch_page_directory(uint32_t cr3);
+extern uint32_t paging_get_kernel_directory();
+extern void page_free(void* address, uint32_t pages);
 
 void task_shell()
 {
@@ -349,16 +351,58 @@ void user_process_copy_memory(
 
 void user_process_exit()
 {
-    if (active_user_process >= 0 &&
-        active_user_process < MAX_USER_PROCESSES)
+    int index;
+    uint32_t cr3;
+    uint32_t table1;
+    uint32_t table2;
+    uint32_t code_page;
+    uint32_t stack_page;
+
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
     {
-
-        user_processes[active_user_process].state =
-            TASK_TERMINATED;
-
-        active_user_process = -1;
+        user_task_state = TASK_TERMINATED;
+        return;
     }
 
+    index = active_user_process;
+
+    cr3 = user_processes[index].cr3;
+    code_page = user_processes[index].code_page;
+    stack_page = user_processes[index].stack_page;
+
+    table1 = *((uint32_t *)(cr3 + 1 * sizeof(uint32_t)));
+    table2 = *((uint32_t *)(cr3 + 2 * sizeof(uint32_t)));
+
+    table1 &= 0xFFFFF000;
+    table2 &= 0xFFFFF000;
+
+    switch_page_directory(
+        paging_get_kernel_directory());
+
+    if (code_page)
+        page_free((void *)code_page, 1);
+
+    if (stack_page)
+        page_free((void *)stack_page, 1);
+
+    if (table1)
+        page_free((void *)table1, 1);
+
+    if (table2)
+        page_free((void *)table2, 1);
+
+    if (cr3)
+        page_free((void *)cr3, 1);
+
+    user_processes[index].state = TASK_TERMINATED;
+    user_processes[index].used = 0;
+    user_processes[index].pid = 0;
+    user_processes[index].cr3 = 0;
+    user_processes[index].code_page = 0;
+    user_processes[index].stack_page = 0;
+
+    active_user_process = -1;
     user_task_state = TASK_TERMINATED;
 }
 
