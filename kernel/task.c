@@ -74,6 +74,57 @@ struct user_process
     uint32_t stack_top;
 };
 
+
+#define PROCESS_HISTORY_SIZE 16
+
+struct process_history_entry
+{
+    uint32_t pid;
+    char name[USER_PROCESS_NAME_SIZE];
+    const char *state;
+};
+
+static struct process_history_entry process_history[PROCESS_HISTORY_SIZE];
+static int process_history_count = 0;
+
+static void copy_process_name(char *destination, const char *source);
+
+static void record_process_history(uint32_t pid, const char *name, const char *state)
+{
+    int i;
+
+    if (process_history_count == PROCESS_HISTORY_SIZE)
+    {
+        for (i = 1; i < PROCESS_HISTORY_SIZE; i++)
+        {
+            process_history[i - 1] = process_history[i];
+        }
+
+        process_history_count--;
+    }
+
+    process_history[process_history_count].pid = pid;
+
+    copy_process_name(
+        process_history[process_history_count].name,
+        name
+    );
+
+    process_history[process_history_count].state = state;
+    process_history_count++;
+}
+
+struct process_history_entry *get_process_history(void)
+{
+    return process_history;
+}
+
+int get_process_history_count(void)
+{
+    return process_history_count;
+}
+
+
 void scheduler_tick();
 
 void user_context_save(uint32_t *frame);
@@ -91,6 +142,7 @@ struct task tasks[] = {
     {3, "idle", TASK_READY, 0, 0, {0}}};
 
 static struct user_process user_processes[MAX_USER_PROCESSES];
+static void copy_process_name(char *destination, const char *source);
 
 int task_count = 3;
 int current_task = 0;
@@ -104,7 +156,26 @@ extern void print(const char *str);
 extern uint32_t get_page_directory();
 extern void switch_page_directory(uint32_t cr3);
 extern uint32_t paging_get_kernel_directory();
-extern void page_free(void* address, uint32_t pages);
+extern uint32_t paging_create_process_directory(
+    uint32_t code_page,
+    uint32_t stack_page);
+extern void *page_alloc(uint32_t pages);
+extern void page_free(void *address, uint32_t pages);
+
+#define PROCESS_HISTORY_SIZE 16
+#define PROCESS_HISTORY_NAME_SIZE 32
+
+
+static struct process_history_entry process_history[PROCESS_HISTORY_SIZE];
+static int process_history_next = 0;
+
+
+
+
+
+
+
+int user_process_kill(uint32_t pid);
 
 void task_shell()
 {
@@ -240,23 +311,49 @@ static void copy_process_name(char *destination, const char *source)
 int user_process_start(const char *name)
 {
     int i;
+    uint32_t code_page;
+    uint32_t stack_page;
+    uint32_t cr3;
 
     for (i = 0; i < MAX_USER_PROCESSES; i++)
     {
         if (!user_processes[i].used)
         {
+            code_page = (uint32_t)page_alloc(1);
+            if (!code_page)
+                return -1;
+
+            stack_page = (uint32_t)page_alloc(1);
+            if (!stack_page)
+            {
+                page_free((void *)code_page, 1);
+                return -1;
+            }
+
+            cr3 = paging_create_process_directory(
+                code_page,
+                stack_page);
+
+            if (!cr3)
+            {
+                page_free((void *)stack_page, 1);
+                page_free((void *)code_page, 1);
+                return -1;
+            }
+
             user_processes[i].pid = next_user_pid++;
             user_processes[i].state = TASK_RUNNING;
             user_processes[i].used = 1;
-            user_processes[i].cr3 = get_page_directory();
-            if (i == 0)
-                user_processes[i].user_context.eip = 0x00400000;
-            else
-                user_processes[i].user_context.eip = 0x00500000;
+            user_processes[i].cr3 = cr3;
+            user_processes[i].code_page = code_page;
+            user_processes[i].stack_page = stack_page;
+
+            user_processes[i].user_context.eip = 0x00400000;
             user_processes[i].user_context.cs = 0x1B;
             user_processes[i].user_context.eflags = 0x202;
             user_processes[i].user_context.user_esp = 0x00801000;
             user_processes[i].user_context.user_ss = 0x23;
+
             user_processes[i].user_context.edi = 0;
             user_processes[i].user_context.esi = 0;
             user_processes[i].user_context.ebp = 0;
@@ -266,18 +363,16 @@ int user_process_start(const char *name)
             user_processes[i].user_context.ecx = 0;
             user_processes[i].user_context.eax = 0;
 
-            copy_process_name(
-                user_processes[i].name,
-                name);
+            copy_process_name(user_processes[i].name, name);
 
             active_user_process = i;
-
             return user_processes[i].pid;
         }
     }
 
     return -1;
 }
+
 int user_process_schedule_next()
 {
     int i;
@@ -286,7 +381,7 @@ int user_process_schedule_next()
     if (active_user_process < 0)
         return -1;
 
-    for (i = 1; i <= MAX_USER_PROCESSES; i++)
+    for (i = 1; i < MAX_USER_PROCESSES; i++)
     {
         next = active_user_process + i;
 
@@ -312,30 +407,37 @@ int user_process_schedule_next()
     return 0;
 }
 
-
-void user_process_copy_memory(
+int user_process_copy_memory(
     const void *code_source,
-    const void *stack_source)
+    const void *stack_source,
+    uint32_t user_esp)
 {
     unsigned char *code_destination;
     unsigned char *stack_destination;
     const unsigned char *code;
     const unsigned char *stack;
+    uint32_t code_page;
+    uint32_t stack_page;
     uint32_t i;
+    int index;
 
     if (active_user_process < 0 ||
         active_user_process >= MAX_USER_PROCESSES)
-        return;
+        return 0;
 
-    if (!user_processes[active_user_process].used)
-        return;
+    index = active_user_process;
 
-    code_destination =
-        (unsigned char *)user_processes[active_user_process].code_page;
+    if (!user_processes[index].used)
+        return 0;
 
-    stack_destination =
-        (unsigned char *)user_processes[active_user_process].stack_page;
+    code_page = user_processes[index].code_page;
+    stack_page = user_processes[index].stack_page;
 
+    if (!code_page || !stack_page)
+        return 0;
+
+    code_destination = (unsigned char *)code_page;
+    stack_destination = (unsigned char *)stack_page;
     code = (const unsigned char *)code_source;
     stack = (const unsigned char *)stack_source;
 
@@ -345,11 +447,17 @@ void user_process_copy_memory(
         stack_destination[i] = stack[i];
     }
 
-    switch_page_directory(
-        user_processes[active_user_process].cr3);
+    user_processes[index].user_context.eip = 0x00400000;
+    user_processes[index].user_context.user_esp = user_esp;
+    user_processes[index].user_context.cs = 0x1B;
+    user_processes[index].user_context.user_ss = 0x23;
+
+    switch_page_directory(user_processes[index].cr3);
+
+    return 1;
 }
 
-void user_process_exit()
+void user_process_exit(void)
 {
     int index;
     uint32_t cr3;
@@ -357,11 +465,15 @@ void user_process_exit()
     uint32_t table2;
     uint32_t code_page;
     uint32_t stack_page;
+    uint32_t saved_eflags;
+
+    __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
 
     if (active_user_process < 0 ||
         active_user_process >= MAX_USER_PROCESSES)
     {
         user_task_state = TASK_TERMINATED;
+        __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
         return;
     }
 
@@ -371,14 +483,35 @@ void user_process_exit()
     code_page = user_processes[index].code_page;
     stack_page = user_processes[index].stack_page;
 
-    table1 = *((uint32_t *)(cr3 + 1 * sizeof(uint32_t)));
-    table2 = *((uint32_t *)(cr3 + 2 * sizeof(uint32_t)));
+    record_process_history(
+        user_processes[index].pid,
+        user_processes[index].name,
+        "TERMINATED");
 
-    table1 &= 0xFFFFF000;
-    table2 &= 0xFFFFF000;
+    table1 = 0;
+    table2 = 0;
 
-    switch_page_directory(
-        paging_get_kernel_directory());
+    /*
+     * Mark the process inactive before releasing its memory so the
+     * scheduler cannot select it while cleanup is in progress.
+     */
+    user_processes[index].state = TASK_TERMINATED;
+    user_processes[index].used = 0;
+    active_user_process = -1;
+    user_task_state = TASK_TERMINATED;
+
+    /*
+     * Return to the kernel address space before reading or freeing
+     * the process directory and its private page tables.
+     */
+    switch_page_directory(paging_get_kernel_directory());
+
+    if (cr3)
+    {
+        uint32_t *directory = (uint32_t *)cr3;
+        table1 = directory[1] & 0xFFFFF000;
+        table2 = directory[2] & 0xFFFFF000;
+    }
 
     if (code_page)
         page_free((void *)code_page, 1);
@@ -395,15 +528,15 @@ void user_process_exit()
     if (cr3)
         page_free((void *)cr3, 1);
 
-    user_processes[index].state = TASK_TERMINATED;
-    user_processes[index].used = 0;
     user_processes[index].pid = 0;
     user_processes[index].cr3 = 0;
     user_processes[index].code_page = 0;
     user_processes[index].stack_page = 0;
+    user_processes[index].name[0] = '\0';
+    user_processes[index].user_context.eip = 0;
+    user_processes[index].user_context.user_esp = 0;
 
-    active_user_process = -1;
-    user_task_state = TASK_TERMINATED;
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
 }
 
 int user_process_kill(uint32_t pid)
@@ -415,7 +548,6 @@ int user_process_kill(uint32_t pid)
         if (user_processes[i].used &&
             user_processes[i].pid == pid)
         {
-
             if (user_processes[i].state == TASK_TERMINATED)
                 return -2;
 
@@ -505,7 +637,7 @@ int user_schedule_next()
     if (active_user_process < 0)
         return 0;
 
-    for (i = 1; i <= MAX_USER_PROCESSES; i++)
+    for (i = 1; i < MAX_USER_PROCESSES; i++)
     {
         next = active_user_process + i;
 
@@ -551,8 +683,7 @@ int user_process_switch()
         return 0;
 
     switch_page_directory(
-        user_processes[active_user_process].cr3
-    );
+        user_processes[active_user_process].cr3);
 
     return 1;
 }
@@ -590,6 +721,15 @@ void user_task_start()
 
 extern int user_process_start(const char *name);
 extern struct user_process *get_user_processes();
+struct process_history_entry
+{
+    uint32_t pid;
+    char name[32];
+    const char *state;
+};
+
+extern struct process_history_entry *get_process_history(void);
+extern int get_process_history_count(void);
 extern int get_user_process_count();
 
 void user_task_exit()

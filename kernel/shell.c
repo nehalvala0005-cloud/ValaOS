@@ -39,10 +39,11 @@ struct task
         uint32_t eflags;
     } context;
 };
-struct user_process {
+struct user_process
+{
     uint32_t pid;
     char name[32];
-    const char* state;
+    const char *state;
     int used;
 };
 
@@ -52,6 +53,7 @@ extern unsigned int memory_used();
 extern unsigned int memory_free();
 extern void enter_user_mode(unsigned int user_esp);
 extern void user_task_start();
+extern int prepare_user_process(unsigned int user_esp);
 
 extern struct task *get_tasks();
 extern int get_task_count();
@@ -60,8 +62,8 @@ extern unsigned int memory_total();
 extern unsigned int memory_page_size();
 extern unsigned int memory_total_pages();
 extern unsigned int memory_used_pages();
-extern void* page_alloc(unsigned int pages);
-extern void page_free(void* address, unsigned int pages);
+extern void *page_alloc(unsigned int pages);
+extern void page_free(void *address, unsigned int pages);
 extern int paging_enabled();
 extern int map_page(unsigned int virtual_address, unsigned int physical_address);
 extern int unmap_page(unsigned int virtual_address);
@@ -74,6 +76,7 @@ extern int task_kill(unsigned int pid);
 extern unsigned int get_timer_ticks();
 extern void vfs_init();
 extern void vfs_list();
+
 extern int vfs_list_dir(const char *name);
 extern int vfs_cat(const char *name);
 extern void vfs_list_programs();
@@ -97,11 +100,23 @@ extern uint8_t inb(uint16_t port);
 extern void outb(uint16_t port, uint8_t value);
 extern void print(const char *str);
 extern void putchar(char c);
-extern int user_process_start(const char* name);
+extern int user_process_start(const char *name);
 extern int user_schedule_next();
 extern int user_process_switch();
-extern struct user_process* get_user_processes();
+extern struct user_process *get_user_processes();
 extern int get_user_process_count();
+
+struct process_history_entry
+{
+    unsigned int pid;
+    char name[32];
+    const char *state;
+};
+
+extern struct process_history_entry *get_process_history(void);
+extern int get_process_history_count(void);
+
+extern int prepare_user_process_memory(unsigned int user_esp);
 extern void clear_screen();
 extern char input[64];
 extern int input_pos;
@@ -299,7 +314,8 @@ int parse_command_line(const char *line, char *command, char args[][MAX_COMMAND_
     return argc;
 }
 
-void selftest() {
+void selftest()
+{
     int passed = 0;
     int failed = 0;
     char buffer[64];
@@ -307,90 +323,106 @@ void selftest() {
     print("\n========== ValaOS 3.0 SELF TEST ==========\n\n");
 
     if (memory_total_pages() > 0 &&
-        memory_page_size() == 4096) {
+        memory_page_size() == 4096)
+    {
 
         print("[ OK ] Memory\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Memory\n");
         failed++;
     }
 
-    if (paging_enabled()) {
+    if (paging_enabled())
+    {
 
         print("[ OK ] Paging\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Paging\n");
         failed++;
     }
 
-    if (disk_test()) {
+    if (disk_test())
+    {
 
         print("[ OK ] Disk\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Disk\n");
         failed++;
     }
 
-    if (memory_used_pages() >= 0) {
+    if (memory_used_pages() >= 0)
+    {
 
         print("[ OK ] Virtual Memory\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Virtual Memory\n");
         failed++;
     }
 
-    if (get_task_count() >= 3) {
+    if (get_task_count() >= 3)
+    {
 
         print("[ OK ] Scheduler\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Scheduler\n");
         failed++;
     }
 
-    if (load_user_program("hello.bin")) {
+    if (load_user_program("hello.bin"))
+    {
 
         print("[ OK ] Program Loader\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Program Loader\n");
         failed++;
     }
 
-    if (vfs_read_file("hello.bin", buffer, sizeof(buffer)) > 0) {
+    if (vfs_read_file("hello.bin", buffer, sizeof(buffer)) > 0)
+    {
 
         print("[ OK ] VFS\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] VFS\n");
         failed++;
     }
 
     if (get_user_processes() != 0 &&
-        get_user_process_count() >= 8) {
+        get_user_process_count() >= 8)
+    {
 
         print("[ OK ] Process Management\n");
         passed++;
-
-    } else {
+    }
+    else
+    {
 
         print("[FAIL] Process Management\n");
         failed++;
@@ -865,6 +897,9 @@ void execute_command()
         else
             print("[ VFS ] File not found\n");
     }
+    
+  
+   
     else if (compare(input, "ps"))
     {
         struct task *list = get_tasks();
@@ -875,37 +910,56 @@ void execute_command()
 
         for (i = 0; i < count; i++)
         {
-            if (list[i].pid == 1)
-                print("1     ");
-            else if (list[i].pid == 2)
-                print("2     ");
-            else if (list[i].pid == 3)
-                print("3     ");
-
+            print_number(list[i].pid);
+            print("     ");
             print(list[i].name);
             print("      ");
             print(list[i].state);
             print("\n");
         }
+
         {
-    struct user_process* users = get_user_processes();
-    int user_count = get_user_process_count();
-    int j;
+            struct user_process *users = get_user_processes();
+            int user_count = get_user_process_count();
+            int j;
 
-    for (j = 0; j < user_count; j++) {
+            for (j = 0; j < user_count; j++)
+            {
+                if (!users[j].used)
+                    continue;
 
-        if (!users[j].used)
-            continue;
+                print_number(users[j].pid);
+                print("     ");
+                print(users[j].name);
+                print("      ");
+                print(users[j].state);
+                print("\n");
+            }
+        }
 
-        print_number(users[j].pid);
-        print("     ");
-        print(users[j].name);
-        print("      ");
-        print(users[j].state);
-        print("\n");
+        {
+            struct process_history_entry *history = get_process_history();
+            int history_count = get_process_history_count();
+            int h;
+
+            if (history_count > 0)
+            {
+                print("\nProcess History:\n");
+                print("PID   NAME      STATE\n");
+
+                for (h = 0; h < history_count; h++)
+                {
+                    print_number(history[h].pid);
+                    print("     ");
+                    print(history[h].name);
+                    print("      ");
+                    print(history[h].state);
+                    print("\n");
+                }
+            }
+        }
     }
-}
-    }
+
     else if (compare(input, "uptime"))
     {
         unsigned int ticks = get_timer_ticks();
@@ -1008,87 +1062,89 @@ void execute_command()
         print("Scheduler cycle complete.\n");
     }
     else if (compare(command, "pagetest"))
-{
-    void *page1;
-    void *page2;
-
-    print("[ PAGE ] Allocating 1 page\n");
-    page1 = page_alloc(1);
-
-    if (!page1)
     {
-        print("[ FAIL ] 1-page allocation failed\n");
-    }
-    else
-    {
-        print("[ OK ] 1-page allocation\n");
-    }
+        void *page1;
+        void *page2;
 
-    print("[ PAGE ] Allocating 2 pages\n");
-    page2 = page_alloc(2);
+        print("[ PAGE ] Allocating 1 page\n");
+        page1 = page_alloc(1);
 
-    if (!page2)
-    {
-        print("[ FAIL ] 2-page allocation failed\n");
-    }
-    else
-    {
-        print("[ OK ] 2-page allocation\n");
-    }
+        if (!page1)
+        {
+            print("[ FAIL ] 1-page allocation failed\n");
+        }
+        else
+        {
+            print("[ OK ] 1-page allocation\n");
+        }
 
-    if (page1)
-        page_free(page1, 1);
+        print("[ PAGE ] Allocating 2 pages\n");
+        page2 = page_alloc(2);
 
-    if (page2)
-        page_free(page2, 2);
+        if (!page2)
+        {
+            print("[ FAIL ] 2-page allocation failed\n");
+        }
+        else
+        {
+            print("[ OK ] 2-page allocation\n");
+        }
 
-    print("[ OK ] Pages released\n");
-}
+        if (page1)
+            page_free(page1, 1);
 
-else if (compare(command, "proctest"))
-{
-    int pid1;
-    int pid2;
+        if (page2)
+            page_free(page2, 2);
 
-    pid1 = user_process_start("test1");
-
-    if (pid1 < 0)
-    {
-        print("[ ERROR ] Process table full\n");
-        goto command_done;
+        print("[ OK ] Pages released\n");
     }
 
-    pid2 = user_process_start("test2");
-
-    if (pid2 < 0)
+    else if (compare(command, "proctest"))
     {
-        print("[ ERROR ] Second process could not start\n");
-        goto command_done;
+        int pid1;
+        int pid2;
+
+        pid1 = user_process_start("test1");
+
+        if (pid1 < 0)
+        {
+            print("[ ERROR ] Process table full\n");
+            goto command_done;
+        }
+
+        pid2 = user_process_start("test2");
+
+        if (pid2 < 0)
+        {
+            print("[ ERROR ] Second process could not start\n");
+            goto command_done;
+        }
+
+        print("[ PROCESS ] PID ");
+        print_number(pid1);
+        print(" created\n");
+
+        print("[ PROCESS ] PID ");
+        print_number(pid2);
+        print(" created\n");
+
+        print("[ SCHED ] Switching to next user process\n");
+
+        if (user_process_switch())
+        {
+            print("[ SCHED ] User process switched\n");
+        }
+        else
+        {
+            print("[ SCHED ] User process switch failed\n");
+        }
     }
 
-    print("[ PROCESS ] PID ");
-    print_number(pid1);
-    print(" created\n");
-
-    print("[ PROCESS ] PID ");
-    print_number(pid2);
-    print(" created\n");
-
-    print("[ SCHED ] Switching to next user process\n");
-
-if (user_process_switch())
-{
-    print("[ SCHED ] User process switched\n");
-}
-else
-{
-    print("[ SCHED ] User process switch failed\n");
-}
-}
     else if (compare(command, "run"))
     {
         char file_name[40];
         int i;
+        int pid;
         unsigned int user_esp;
 
         if (argc < 1)
@@ -1117,12 +1173,17 @@ else
 
             if (load_user_program_args(file_name, argc, args, &user_esp))
             {
-
-                int pid = user_process_start(args[0]);
+                pid = user_process_start(args[0]);
 
                 if (pid < 0)
                 {
-                    print("[ ERROR ] Process table full\n");
+                    print("[ ERROR ] Unable to create process\n");
+                    goto command_done;
+                }
+
+                if (!prepare_user_process_memory(user_esp))
+                {
+                    print("[ ERROR ] Unable to prepare process memory\n");
                     goto command_done;
                 }
 
@@ -1141,6 +1202,7 @@ else
             }
         }
     }
+
     else if (starts_with_echo(input))
     {
         print(input + 5);
