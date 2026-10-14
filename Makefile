@@ -30,6 +30,9 @@ build/paging.o: kernel/paging.c
 build/interrupts.o: kernel/interrupts.c
 	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/interrupts.c -o build/interrupts.o
 
+build/interrupts_asm.o: kernel/interrupts.asm
+	nasm -f elf32 kernel/interrupts.asm -o build/interrupts_asm.o
+
 build/pagefault.o: kernel/pagefault.c
 	gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel/pagefault.c -o build/pagefault.o
 
@@ -54,10 +57,10 @@ build/syscall.o: kernel/syscall.c
 build/syscall_asm.o: kernel/syscall.asm
 	nasm -f elf32 kernel/syscall.asm -o build/syscall_asm.o
 
-build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/shell.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o linker.ld
-	ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/shell.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o
+build/kernel.bin: build/boot.o build/kernel.o build/keyboard.o build/shell.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/interrupts_asm.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o linker.ld
+	ld -m elf_i386 -T linker.ld -o build/kernel.bin build/boot.o build/kernel.o build/keyboard.o build/shell.o build/vfs.o build/disk.o build/memory.o build/task.o build/paging.o build/interrupts.o build/interrupts_asm.o build/pagefault.o build/pagefault_asm.o build/timer.o build/tss.o build/tss_asm.o build/user_mode.o build/syscall.o build/syscall_asm.o
 
-iso: build/kernel.bin
+iso: build/kernel.bin		
 	mkdir -p build/isodir/boot/grub
 	cp build/kernel.bin build/isodir/boot/kernel.bin
 	cp boot/grub/grub.cfg build/isodir/boot/grub/grub.cfg

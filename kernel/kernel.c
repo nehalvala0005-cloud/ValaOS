@@ -5,9 +5,9 @@
  */
 
 extern void keyboard_init();
-extern void keyboard_poll();
+extern void keyboard_process_pending();
 extern void clear_screen();
-extern void print(const char* str);
+extern void print(const char *str);
 
 extern void paging_init();
 extern int paging_enabled();
@@ -17,18 +17,18 @@ extern void task_context_init();
 extern void tss_init();
 
 extern int map_page_flags(
-    unsigned int* virtual_address,
-    unsigned int* physical_address,
-    unsigned int flags
-);
+    unsigned int *virtual_address,
+    unsigned int *physical_address,
+    unsigned int flags);
 
 extern void enter_user_mode(unsigned int user_esp);
 extern void enter_user_program(unsigned int address);
 extern void user_task_start();
-extern void user_process_copy_memory(
+extern int vfs_read_file(const char *name, char *buffer, int max_size);
+extern int user_process_copy_memory(
     const void *code_source,
-    const void *stack_source);
-extern int vfs_read_file(const char* name, char* buffer, int max_size);
+    const void *stack_source,
+    unsigned int user_esp);
 
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
@@ -49,7 +49,8 @@ static unsigned char user_test_page[4096]
 static unsigned char user_stack_page[4096]
     __attribute__((aligned(4096)));
 
-static int hex_value(char c) {
+static int hex_value(char c)
+{
     if (c >= '0' && c <= '9')
         return c - '0';
 
@@ -62,7 +63,8 @@ static int hex_value(char c) {
     return -1;
 }
 
-int load_user_program(const char* name) {
+int load_user_program(const char *name)
+{
     static char hex_data[256];
     int length;
     int i;
@@ -86,7 +88,8 @@ int load_user_program(const char* name) {
     for (i = 0; i < 4096; i++)
         user_code_page[i] = 0;
 
-    for (i = 0; i < byte_count; i++) {
+    for (i = 0; i < byte_count; i++)
+    {
         high = hex_value(hex_data[i * 2]);
         low = hex_value(hex_data[i * 2 + 1]);
 
@@ -103,12 +106,12 @@ int load_user_program(const char* name) {
 static int prepare_user_arguments(
     int argc,
     char args[][MAX_COMMAND_ARG_LEN],
-    unsigned int* user_esp
-) {
+    unsigned int *user_esp)
+{
     unsigned int stack_pos;
     unsigned int string_pos;
     unsigned int string_addresses[MAX_COMMAND_ARGS];
-    unsigned int* stack;
+    unsigned int *stack;
     int i;
     int j;
     int length;
@@ -122,7 +125,8 @@ static int prepare_user_arguments(
     stack_pos = USER_STACK_SIZE;
     string_pos = USER_STACK_SIZE;
 
-    for (i = argc - 1; i >= 0; i--) {
+    for (i = argc - 1; i >= 0; i--)
+    {
         length = 0;
 
         while (args[i][length] != '\0' &&
@@ -150,7 +154,7 @@ static int prepare_user_arguments(
 
     stack_pos -= (argc + 2) * 4;
 
-    stack = (unsigned int*)(user_stack_page + stack_pos);
+    stack = (unsigned int *)(user_stack_page + stack_pos);
 
     stack[0] = argc;
 
@@ -165,11 +169,11 @@ static int prepare_user_arguments(
 }
 
 int load_user_program_args(
-    const char* name,
+    const char *name,
     int argc,
     char args[][MAX_COMMAND_ARG_LEN],
-    unsigned int* user_esp
-) {
+    unsigned int *user_esp)
+{
     if (!load_user_program(name))
         return 0;
 
@@ -179,7 +183,16 @@ int load_user_program_args(
     return 1;
 }
 
-void user_mode_init() {
+int prepare_user_process_memory(unsigned int user_esp)
+{
+    return user_process_copy_memory(
+        user_code_page,
+        user_stack_page,
+        user_esp);
+}
+
+void user_mode_init()
+{
 
     user_code_page[0] = 0xB8;
     user_code_page[1] = 0x01;
@@ -240,29 +253,12 @@ void user_mode_init() {
 
     user_test_page[21] = 0xEB;
     user_test_page[22] = 0xFE;
-
-    map_page_flags(
-        (unsigned int*)0x00400000,
-        (unsigned int*)user_code_page,
-        PAGE_PRESENT | PAGE_USER
-    );
-
-    map_page_flags(
-        (unsigned int*)0x00500000,
-        (unsigned int*)user_test_page,
-        PAGE_PRESENT | PAGE_USER
-    );
-
-    map_page_flags(
-        (unsigned int*)0x00800000,
-        (unsigned int*)user_stack_page,
-        PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
-    );
 }
 
-void kernel_main() {
+void kernel_main()
+{
 
-    __asm__ volatile ("cli");
+    __asm__ volatile("cli");
 
     clear_screen();
 
@@ -290,9 +286,10 @@ void kernel_main() {
 
     keyboard_init();
 
-    __asm__ volatile ("sti");
+    __asm__ volatile("sti");
 
-    while (1) {
-        keyboard_poll();
+    while (1)
+    {
+        keyboard_process_pending();
     }
 }

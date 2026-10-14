@@ -183,9 +183,11 @@ void keyboard_init() {
     hide_cursor();
 }
 
-void keyboard_poll() {
-    static unsigned char key_down[128];
 
+static unsigned char key_down[128];
+static volatile int command_pending = 0;
+
+void keyboard_handler() {
     if (!(inb(0x64) & 1))
         return;
 
@@ -208,26 +210,39 @@ void keyboard_poll() {
     char c = key_map[key_code];
 
     if (c == '\b') {
-        if (input_pos > 0 && col > 0) {
+        if (input_pos > 0) {
             input_pos--;
-            col--;
 
-            int pos = (row * 80 + col) * 2;
+            if (col > 0) {
+                col--;
 
-            video[pos] = ' ';
-            video[pos + 1] = 0x07;
+                int pos = (row * 80 + col) * 2;
+                video[pos] = ' ';
+                video[pos + 1] = 0x07;
+            }
 
             input[input_pos] = '\0';
         }
     }
     else if (c == '\n') {
         input[input_pos] = '\0';
-        execute_command();
+        command_pending = 1;
     }
     else if (c && input_pos < 63) {
         input[input_pos++] = c;
         input[input_pos] = '\0';
-
         putchar(c);
     }
 }
+
+void keyboard_process_pending() {
+    if (command_pending) {
+        command_pending = 0;
+        execute_command();
+    }
+}
+
+void keyboard_poll() {
+    keyboard_process_pending();
+}
+
