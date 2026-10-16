@@ -581,12 +581,14 @@ void execute_command()
             print("Memory allocation: FAILED\n");
         }
     }
+
     else if (compare(input, "memstress"))
     {
-        void *a;
-        void *b;
-        void *c;
-        void *d;
+        void *a = 0;
+        void *b = 0;
+        void *c = 0;
+        void *d = 0;
+        int passed = 1;
 
         print("Memory Stress Test\n\n");
 
@@ -594,36 +596,57 @@ void execute_command()
         if (a)
             print("[ OK ] Allocation A - 1 page\n");
         else
+        {
             print("[FAIL] Allocation A\n");
+            passed = 0;
+        }
 
         b = kmalloc(8192);
         if (b)
             print("[ OK ] Allocation B - 2 pages\n");
         else
+        {
             print("[FAIL] Allocation B\n");
+            passed = 0;
+        }
 
         c = kmalloc(16384);
         if (c)
             print("[ OK ] Allocation C - 4 pages\n");
         else
+        {
             print("[FAIL] Allocation C\n");
+            passed = 0;
+        }
 
-        kfree(b);
-        print("[ OK ] Freed allocation B\n");
+        if (b)
+        {
+            kfree(b);
+            print("[ OK ] Freed allocation B\n");
 
-        d = kmalloc(8192);
+            d = kmalloc(8192);
+            if (d)
+                print("[ OK ] Reused freed pages\n");
+            else
+            {
+                print("[FAIL] Reallocation\n");
+                passed = 0;
+            }
+        }
+
+        if (a)
+            kfree(a);
+        if (c)
+            kfree(c);
         if (d)
-            print("[ OK ] Reused freed pages\n");
+            kfree(d);
+
+        if (passed)
+            print("\nMemory stress test passed.\n");
         else
-            print("[FAIL] Reallocation\n");
-
-        kfree(a);
-        kfree(c);
-        kfree(d);
-
-        print("[ OK ] All allocations released\n");
-        print("\nMemory stress test passed.\n");
+            print("\nMemory stress test FAILED.\n");
     }
+
     else if (compare(input, "meminfo"))
     {
         print("==============================\n");
