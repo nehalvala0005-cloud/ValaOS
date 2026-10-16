@@ -582,6 +582,7 @@ void execute_command()
         }
     }
 
+    
     else if (compare(input, "memstress"))
     {
         void *a = 0;
@@ -619,7 +620,7 @@ void execute_command()
 
         if (a)
         {
-            uint32_t before = memory_used();
+            unsigned int before = memory_used();
 
             kfree((void *)((uint32_t)a + 1));
 
@@ -654,6 +655,20 @@ void execute_command()
         {
             kfree(b);
             print("[ OK ] Freed allocation B\n");
+
+            {
+                unsigned int before = memory_used();
+
+                kfree(b);
+
+                if (memory_used() == before)
+                    print("[ OK ] Double-free rejected\n");
+                else
+                {
+                    print("[FAIL] Double-free changed memory\n");
+                    passed = 0;
+                }
+            }
 
             d = kmalloc(8192);
             if (d)
