@@ -592,6 +592,25 @@ void execute_command()
 
         print("Memory Stress Test\n\n");
 
+        
+        if (kmalloc(0) == 0)
+            print("[ OK ] Zero-size allocation rejected\n");
+        else
+        {
+            print("[FAIL] Zero-size allocation accepted\n");
+            passed = 0;
+        }
+
+        
+        if (kmalloc(4194305) == 0)
+            print("[ OK ] Oversized allocation rejected\n");
+        else
+        {
+            print("[FAIL] Oversized allocation accepted\n");
+            passed = 0;
+        }
+
+
         a = kmalloc(4096);
         if (a)
             print("[ OK ] Allocation A - 1 page\n");
