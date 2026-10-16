@@ -256,6 +256,71 @@ void user_mode_init()
     user_test_page[22] = 0xFE;
 }
 
+extern int user_process_start(const char *name);
+extern int task_kill(unsigned int pid);
+
+int run_syscall_reliability_test(void)
+{
+
+    static const unsigned char test_code[] = {
+        0xB8, 0x01, 0x00, 0x00, 0x00,
+        0xBB, 0x41, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+
+        0xB8, 0x63, 0x00, 0x00, 0x00,
+        0x31, 0xDB,
+        0xCD, 0x80,
+        0x3D, 0xFF, 0xFF, 0xFF, 0xFF,
+        0x75, 0x15,
+
+        0xB8, 0x01, 0x00, 0x00, 0x00,
+        0xBB, 0x42, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+
+        0xB8, 0x02, 0x00, 0x00, 0x00,
+        0x31, 0xDB,
+        0xCD, 0x80,
+
+        0xB8, 0x01, 0x00, 0x00, 0x00,
+        0xBB, 0x46, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+
+        0xB8, 0x02, 0x00, 0x00, 0x00,
+        0x31, 0xDB,
+        0xCD, 0x80};
+
+    unsigned int i;
+    int pid;
+
+    for (i = 0; i < sizeof(user_code_page); i++)
+    {
+        user_code_page[i] = 0;
+        user_stack_page[i] = 0;
+    }
+
+    for (i = 0; i < sizeof(test_code); i++)
+        user_code_page[i] = test_code[i];
+
+    pid = user_process_start("syscalltest");
+
+    if (pid < 0)
+        return 0;
+
+    if (!user_process_copy_memory(
+            user_code_page,
+            user_stack_page,
+            USER_STACK_BASE + USER_STACK_SIZE))
+    {
+        task_kill((unsigned int)pid);
+        return 0;
+    }
+
+    user_task_start();
+    enter_user_mode(USER_STACK_BASE + USER_STACK_SIZE);
+
+    return 1;
+}
+
 void kernel_main()
 {
 

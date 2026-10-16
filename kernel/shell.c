@@ -22,6 +22,7 @@ extern void kfree(void *address);
 extern unsigned int memory_used();
 extern unsigned int memory_free();
 extern void enter_user_mode(unsigned int user_esp);
+extern int run_syscall_reliability_test(void);
 extern void user_task_start();
 extern int prepare_user_process(unsigned int user_esp);
 
@@ -525,6 +526,7 @@ void execute_command()
         print("ticks\n");
         print("schedule\n");
         print("proctest\n");
+        print("syscalltest\n");
         print("run hello\n");
         print("ls [directory]\n");
         print("cat <file>\n");
@@ -582,7 +584,6 @@ void execute_command()
         }
     }
 
-    
     else if (compare(input, "memstress"))
     {
         void *a = 0;
@@ -1328,6 +1329,16 @@ void execute_command()
         }
     }
 
+    else if (compare(command, "syscalltest"))
+    {
+        print("Syscall Reliability Test\n\n");
+        print("[ TEST ] Calling unknown syscall 99\n");
+
+        if (run_syscall_reliability_test())
+            print("\n[ OK ] Syscall test process completed\n");
+        else
+            print("\n[ FAIL ] Unable to launch syscall test\n");
+    }
     else if (compare(command, "run"))
     {
         char file_name[40];
