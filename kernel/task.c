@@ -643,6 +643,20 @@ static int terminate_user_process(int index)
     return 1;
 }
 
+int user_process_reap_pending(void)
+{
+    int index = active_user_process;
+
+    if (index < 0 || index >= MAX_USER_PROCESSES)
+        return 0;
+
+    if (!user_processes[index].used ||
+        user_processes[index].state != TASK_TERMINATED)
+        return 0;
+
+    return terminate_user_process(index);
+}
+
 void user_process_exit(void)
 {
     if (active_user_process < 0 ||
