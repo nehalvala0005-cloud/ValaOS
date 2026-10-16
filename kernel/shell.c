@@ -592,7 +592,6 @@ void execute_command()
 
         print("Memory Stress Test\n\n");
 
-        
         if (kmalloc(0) == 0)
             print("[ OK ] Zero-size allocation rejected\n");
         else
@@ -601,7 +600,6 @@ void execute_command()
             passed = 0;
         }
 
-        
         if (kmalloc(4194305) == 0)
             print("[ OK ] Oversized allocation rejected\n");
         else
@@ -610,7 +608,6 @@ void execute_command()
             passed = 0;
         }
 
-
         a = kmalloc(4096);
         if (a)
             print("[ OK ] Allocation A - 1 page\n");
@@ -618,6 +615,21 @@ void execute_command()
         {
             print("[FAIL] Allocation A\n");
             passed = 0;
+        }
+
+        if (a)
+        {
+            uint32_t before = memory_used();
+
+            kfree((void *)((uint32_t)a + 1));
+
+            if (memory_used() == before)
+                print("[ OK ] Invalid pointer free rejected\n");
+            else
+            {
+                print("[FAIL] Invalid pointer free changed memory\n");
+                passed = 0;
+            }
         }
 
         b = kmalloc(8192);
