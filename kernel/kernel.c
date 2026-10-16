@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+extern void vfs_init(void);
 extern void keyboard_init();
 extern void keyboard_process_pending();
 extern void clear_screen();
@@ -273,7 +274,7 @@ void kernel_main()
     print("              V A L A O S\n");
     print("========================================\n\n");
 
-    print("ValaOS Kernel v1.0\n\n");
+    print("ValaOS Kernel v4.0\n\n");
 
     print("[ OK ] Kernel loaded\n");
     print("[ OK ] VGA initialized\n");
@@ -282,10 +283,9 @@ void kernel_main()
 
     print("Welcome to ValaOS!\n\n");
 
-    print("ValaOS> ");
-
+    vfs_init();
     keyboard_init();
-
+    print("ValaOS> ");
     __asm__ volatile("sti");
 
     while (1)

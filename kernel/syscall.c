@@ -5,7 +5,7 @@
  */
 
 extern void print(const char* str);
-extern void user_task_exit();
+extern void user_task_exit(void);
 
 #define SYS_WRITE 1
 #define SYS_EXIT 2

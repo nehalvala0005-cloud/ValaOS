@@ -14,6 +14,7 @@ typedef unsigned int uint32_t;
 #define TASK_TERMINATED "TERMINATED"
 
 #define TASK_STACK_SIZE 4096
+#define MAX_KERNEL_TASKS 3
 #define MAX_USER_PROCESSES 8
 #define USER_PROCESS_NAME_SIZE 32
 
@@ -88,10 +89,14 @@ static struct process_history_entry process_history[PROCESS_HISTORY_SIZE];
 static int process_history_count = 0;
 
 static void copy_process_name(char *destination, const char *source);
+static int process_history_contains(uint32_t pid);
 
 static void record_process_history(uint32_t pid, const char *name, const char *state)
 {
     int i;
+
+    if (pid == 0 || process_history_contains(pid))
+        return;
 
     if (process_history_count == PROCESS_HISTORY_SIZE)
     {
@@ -124,6 +129,21 @@ int get_process_history_count(void)
     return process_history_count;
 }
 
+int get_process_history_info(
+    int index,
+    uint32_t *pid,
+    const char **name,
+    const char **state)
+{
+    if (index < 0 || index >= process_history_count)
+        return 0;
+
+    *pid = process_history[index].pid;
+    *name = process_history[index].name;
+    *state = process_history[index].state;
+    return 1;
+}
+
 
 void scheduler_tick();
 
@@ -131,6 +151,9 @@ void user_context_save(uint32_t *frame);
 void user_context_restore(uint32_t *frame);
 
 static unsigned char task_stacks[3][TASK_STACK_SIZE]
+    __attribute__((aligned(16)));
+
+static unsigned char user_entry_stacks[MAX_KERNEL_TASKS][TASK_STACK_SIZE]
     __attribute__((aligned(16)));
 
 static unsigned char user_task_stacks[MAX_USER_PROCESSES][TASK_STACK_SIZE]
@@ -161,19 +184,7 @@ extern uint32_t paging_create_process_directory(
     uint32_t stack_page);
 extern void *page_alloc(uint32_t pages);
 extern void page_free(void *address, uint32_t pages);
-
-#define PROCESS_HISTORY_SIZE 16
-#define PROCESS_HISTORY_NAME_SIZE 32
-
-
-static struct process_history_entry process_history[PROCESS_HISTORY_SIZE];
-static int process_history_next = 0;
-
-
-
-
-
-
+extern void tss_set_kernel_stack(uint32_t stack_top);
 
 int user_process_kill(uint32_t pid);
 
@@ -279,6 +290,21 @@ struct task *get_tasks()
     return tasks;
 }
 
+int get_task_info(
+    int index,
+    uint32_t *pid,
+    const char **name,
+    const char **state)
+{
+    if (index < 0 || index >= task_count)
+        return 0;
+
+    *pid = tasks[index].pid;
+    *name = tasks[index].name;
+    *state = tasks[index].state;
+    return 1;
+}
+
 int get_task_count()
 {
     return task_count;
@@ -294,6 +320,24 @@ int get_user_process_count()
     return MAX_USER_PROCESSES;
 }
 
+int get_user_process_info(
+    int index,
+    uint32_t *pid,
+    const char **name,
+    const char **state)
+{
+    if (index < 0 ||
+        index >= MAX_USER_PROCESSES ||
+        !user_processes[index].used ||
+        user_processes[index].state == TASK_TERMINATED)
+        return 0;
+
+    *pid = user_processes[index].pid;
+    *name = user_processes[index].name;
+    *state = user_processes[index].state;
+    return 1;
+}
+
 static void copy_process_name(char *destination, const char *source)
 {
     int i = 0;
@@ -306,6 +350,48 @@ static void copy_process_name(char *destination, const char *source)
     }
 
     destination[i] = '\0';
+}
+
+static int process_pid_is_reserved(uint32_t pid)
+{
+    int i;
+
+    for (i = 0; i < task_count; i++)
+    {
+        if (tasks[i].pid == pid)
+            return 1;
+    }
+
+    for (i = 0; i < MAX_USER_PROCESSES; i++)
+    {
+        if (user_processes[i].used &&
+            user_processes[i].pid == pid)
+            return 1;
+    }
+
+    return process_history_contains(pid);
+}
+
+static uint32_t allocate_user_pid(void)
+{
+    uint32_t pid;
+
+    if (next_user_pid < 4)
+        next_user_pid = 4;
+
+    pid = next_user_pid;
+    while (process_pid_is_reserved(pid))
+    {
+        pid++;
+        if (pid < 4)
+            pid = 4;
+    }
+
+    next_user_pid = pid + 1;
+    if (next_user_pid < 4)
+        next_user_pid = 4;
+
+    return pid;
 }
 
 int user_process_start(const char *name)
@@ -341,8 +427,8 @@ int user_process_start(const char *name)
                 return -1;
             }
 
-            user_processes[i].pid = next_user_pid++;
-            user_processes[i].state = TASK_RUNNING;
+            user_processes[i].pid = allocate_user_pid();
+            user_processes[i].state = TASK_READY;
             user_processes[i].used = 1;
             user_processes[i].cr3 = cr3;
             user_processes[i].code_page = code_page;
@@ -380,6 +466,9 @@ int user_process_schedule_next()
 
     if (active_user_process < 0)
         return -1;
+
+    if (user_processes[active_user_process].state == TASK_TERMINATED)
+        return 0;
 
     for (i = 1; i < MAX_USER_PROCESSES; i++)
     {
@@ -457,31 +546,38 @@ int user_process_copy_memory(
     return 1;
 }
 
-void user_process_exit(void)
+static int terminate_user_process(int index)
 {
-    int index;
     uint32_t cr3;
     uint32_t table1;
     uint32_t table2;
+    uint32_t kernel_table1;
+    uint32_t kernel_table2;
     uint32_t code_page;
     uint32_t stack_page;
     uint32_t saved_eflags;
+    uint32_t kernel_directory;
 
     __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
 
-    if (active_user_process < 0 ||
-        active_user_process >= MAX_USER_PROCESSES)
+    if (index < 0 ||
+        index >= MAX_USER_PROCESSES ||
+        !user_processes[index].used)
     {
-        user_task_state = TASK_TERMINATED;
         __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
-        return;
+        return 0;
     }
-
-    index = active_user_process;
 
     cr3 = user_processes[index].cr3;
     code_page = user_processes[index].code_page;
     stack_page = user_processes[index].stack_page;
+    kernel_directory = paging_get_kernel_directory();
+
+    if (!cr3 || cr3 == kernel_directory)
+    {
+        __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+        return 0;
+    }
 
     record_process_history(
         user_processes[index].pid,
@@ -497,36 +593,24 @@ void user_process_exit(void)
      */
     user_processes[index].state = TASK_TERMINATED;
     user_processes[index].used = 0;
-    active_user_process = -1;
-    user_task_state = TASK_TERMINATED;
-
-    /*
-     * Return to the kernel address space before reading or freeing
-     * the process directory and its private page tables.
-     */
-    switch_page_directory(paging_get_kernel_directory());
-
-    if (cr3)
+    if (active_user_process == index)
     {
-        uint32_t *directory = (uint32_t *)cr3;
-        table1 = directory[1] & 0xFFFFF000;
-        table2 = directory[2] & 0xFFFFF000;
+        active_user_process = -1;
+        user_task_state = TASK_TERMINATED;
     }
 
-    if (code_page)
-        page_free((void *)code_page, 1);
+    switch_page_directory(kernel_directory);
 
-    if (stack_page)
-        page_free((void *)stack_page, 1);
+    {
+        uint32_t *directory = (uint32_t *)cr3;
+        uint32_t *kernel_directory_entries =
+            (uint32_t *)kernel_directory;
 
-    if (table1)
-        page_free((void *)table1, 1);
-
-    if (table2)
-        page_free((void *)table2, 1);
-
-    if (cr3)
-        page_free((void *)cr3, 1);
+        table1 = (directory[1] & 0x001) ? directory[1] & 0xFFFFF000 : 0;
+        table2 = (directory[2] & 0x001) ? directory[2] & 0xFFFFF000 : 0;
+        kernel_table1 = kernel_directory_entries[1] & 0xFFFFF000;
+        kernel_table2 = kernel_directory_entries[2] & 0xFFFFF000;
+    }
 
     user_processes[index].pid = 0;
     user_processes[index].cr3 = 0;
@@ -536,12 +620,59 @@ void user_process_exit(void)
     user_processes[index].user_context.eip = 0;
     user_processes[index].user_context.user_esp = 0;
 
+    if (code_page)
+        page_free((void *)code_page, 1);
+
+    if (stack_page)
+        page_free((void *)stack_page, 1);
+
+    if (table1 &&
+        table1 != kernel_table1 &&
+        table1 != kernel_table2)
+        page_free((void *)table1, 1);
+
+    if (table2 &&
+        table2 != table1 &&
+        table2 != kernel_table1 &&
+        table2 != kernel_table2)
+        page_free((void *)table2, 1);
+
+    page_free((void *)cr3, 1);
+
     __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+    return 1;
+}
+
+void user_process_exit(void)
+{
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES)
+    {
+        user_task_state = TASK_TERMINATED;
+        return;
+    }
+
+    if (!terminate_user_process(active_user_process))
+        user_task_state = TASK_TERMINATED;
+}
+
+static int process_history_contains(uint32_t pid)
+{
+    int i;
+
+    for (i = 0; i < process_history_count; i++)
+    {
+        if (process_history[i].pid == pid)
+            return 1;
+    }
+
+    return 0;
 }
 
 int user_process_kill(uint32_t pid)
 {
     int i;
+    uint32_t saved_eflags;
 
     for (i = 0; i < MAX_USER_PROCESSES; i++)
     {
@@ -551,14 +682,24 @@ int user_process_kill(uint32_t pid)
             if (user_processes[i].state == TASK_TERMINATED)
                 return -2;
 
+            __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
             user_processes[i].state = TASK_TERMINATED;
 
-            if (active_user_process == i)
+            if (active_user_process == i &&
+                user_task_state == TASK_RUNNING)
+            {
                 user_task_state = TASK_TERMINATED;
+                __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+                return 2;
+            }
 
-            return 1;
+            __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+            return terminate_user_process(i) ? 1 : -3;
         }
     }
+
+    if (process_history_contains(pid))
+        return -2;
 
     return 0;
 }
@@ -567,20 +708,10 @@ int task_kill(uint32_t pid)
 {
     int i;
 
-    if (pid == 1 || pid == 2)
-        return -1;
-
     for (i = 0; i < task_count; i++)
     {
         if (tasks[i].pid == pid)
-        {
-
-            if (tasks[i].state[0] == 'T')
-                return -2;
-
-            tasks[i].state = TASK_TERMINATED;
-            return 1;
-        }
+            return -1;
     }
 
     return user_process_kill(pid);
@@ -591,12 +722,18 @@ void schedule_once()
     int i;
     int next_task = current_task;
 
-    for (i = 1; i <= 2; i++)
+    if (task_count <= 0)
+        return;
+
+    if (current_task < 0 || current_task >= task_count)
+        current_task = 0;
+
+    for (i = 1; i <= task_count; i++)
     {
         next_task = current_task + i;
 
-        if (next_task >= 2)
-            next_task = 0;
+        while (next_task >= task_count)
+            next_task -= task_count;
 
         if (tasks[next_task].state[0] != 'T')
             break;
@@ -622,6 +759,12 @@ uint32_t task_switch_prepare(uint32_t current_esp)
 
     tasks[previous_task].context.esp = current_esp;
 
+    if (active_user_process >= 0 &&
+        active_user_process < MAX_USER_PROCESSES &&
+        user_processes[active_user_process].used &&
+        user_processes[active_user_process].state == TASK_TERMINATED)
+        terminate_user_process(active_user_process);
+
     scheduler_tick();
 
     if (current_task == previous_task)
@@ -635,6 +778,9 @@ int user_schedule_next()
     int next;
 
     if (active_user_process < 0)
+        return 0;
+
+    if (user_processes[active_user_process].state == TASK_TERMINATED)
         return 0;
 
     for (i = 1; i < MAX_USER_PROCESSES; i++)
@@ -716,21 +862,19 @@ void scheduler_tick()
 
 void user_task_start()
 {
+    if (current_task >= 0 && current_task < MAX_KERNEL_TASKS)
+    {
+        tss_set_kernel_stack(
+            (uint32_t)&user_entry_stacks[current_task][TASK_STACK_SIZE]);
+    }
+
     user_task_state = TASK_RUNNING;
+
+    if (active_user_process >= 0 &&
+        active_user_process < MAX_USER_PROCESSES &&
+        user_processes[active_user_process].used)
+        user_processes[active_user_process].state = TASK_RUNNING;
 }
-
-extern int user_process_start(const char *name);
-extern struct user_process *get_user_processes();
-struct process_history_entry
-{
-    uint32_t pid;
-    char name[32];
-    const char *state;
-};
-
-extern struct process_history_entry *get_process_history(void);
-extern int get_process_history_count(void);
-extern int get_user_process_count();
 
 void user_task_exit()
 {

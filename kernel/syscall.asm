@@ -4,6 +4,7 @@ global syscall_isr
 
 extern syscall_handler
 extern user_return_esp
+extern user_return_eflags
 
 syscall_isr:
     pusha
@@ -20,9 +21,16 @@ syscall_isr:
     iretd
 
 syscall_exit:
-    add esp, 32
-    add esp, 20
-
     mov esp, [user_return_esp]
+    push dword [user_return_eflags]
 
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    pop eax
+    push eax
+    popfd
     ret

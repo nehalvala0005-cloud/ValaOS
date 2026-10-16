@@ -67,6 +67,14 @@ extern int vfs_remove(const char *name);
 extern int vfs_mkdir(const char *name);
 extern int vfs_cd(const char *name);
 extern void vfs_pwd();
+extern int vfs_complete_name(
+    const char *prefix,
+    int parent,
+    int index,
+    char *name,
+    int max_size,
+    int *is_dir);
+extern int vfs_current_dir_index(void);
 extern int load_user_program(const char *name);
 extern int disk_test();
 
@@ -112,6 +120,14 @@ void outb(uint16_t port, uint8_t value)
         : "a"(value), "Nd"(port));
 }
 
+void show_cursor()
+{
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x0E);
+    outb(0x3D4, 0x0B);
+    outb(0x3D5, 0x0F);
+}
+
 void hide_cursor()
 {
     outb(0x3D4, 0x0A);
@@ -149,6 +165,13 @@ void move_cursor_next_line()
     }
 }
 
+static unsigned char terminal_color = 0x07;
+
+void terminal_set_color(unsigned char color)
+{
+    terminal_color = color;
+}
+
 void putchar(char c)
 {
     if (c == '\n')
@@ -163,7 +186,7 @@ void putchar(char c)
     int pos = (row * 80 + col) * 2;
 
     video[pos] = c;
-    video[pos + 1] = 0x07;
+    video[pos + 1] = terminal_color;
 
     col++;
 }
@@ -253,8 +276,22 @@ static void redraw_input()
     if (end >= 80 * 25)
         end = 80 * 25 - 1;
 
-    row = end / 80;
-    col = end % 80;
+    int cursor_cell = start + input_cursor;
+
+    if (cursor_cell >= 80 * 25)
+        cursor_cell = 80 * 25 - 1;
+
+    row = cursor_cell / 80;
+    col = cursor_cell % 80;
+
+    unsigned short position = (unsigned short)cursor_cell;
+
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (unsigned char)(position & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (unsigned char)(position >> 8));
+
+    show_cursor();
 }
 
 static void move_input_cursor(int direction)
@@ -265,7 +302,7 @@ static void move_input_cursor(int direction)
     if (direction > 0 && input_cursor < input_pos)
         input_cursor++;
 
-    hide_cursor();
+    redraw_input();
 }
 
 static void load_history_command(int index)
@@ -344,7 +381,6 @@ static void save_history_command()
 
 void keyboard_init()
 {
-    vfs_init();
 
     input_pos = 0;
     input_cursor = 0;
@@ -377,64 +413,136 @@ const char *command_list[] = {
 
 #define COMMAND_COUNT (sizeof(command_list) / sizeof(command_list[0]))
 
+int input_last_word_start(void)
+{
+    int i = input_pos;
+
+    while (i > 0 && input[i - 1] != ' ')
+        i--;
+
+    return i;
+}
+
 void autocomplete_command()
 {
     int i;
     int matches = 0;
     int match_index = -1;
+    int word_start = input_last_word_start();
+    int has_space = (input_pos > 0 && input[input_pos - 1] == ' ');
+    int is_dir = 0;
+    char name[32];
 
     if (input_cursor != input_pos)
         return;
 
-    for (i = 0; i < input_pos; i++)
+    if (word_start == 0 && !has_space)
     {
-        if (input[i] == ' ')
-            return;
-    }
-
-    for (i = 0; i < COMMAND_COUNT; i++)
-    {
-        if (starts_with(command_list[i], input))
-        {
-            matches++;
-            match_index = i;
-        }
-    }
-
-    if (matches == 1)
-    {
-        int j = 0;
-
-        while (command_list[match_index][j] && j < 62)
-        {
-            input[j] = command_list[match_index][j];
-            j++;
-        }
-
-        input[j] = '\0';
-
-        input_pos = j;
-        input_cursor = j;
-
-        redraw_input();
-    }
-    else if (matches > 1)
-    {
-        putchar('\n');
-
         for (i = 0; i < COMMAND_COUNT; i++)
         {
             if (starts_with(command_list[i], input))
             {
-                print(command_list[i]);
-                print("  ");
+                matches++;
+                match_index = i;
             }
         }
 
-        putchar('\n');
-        print("ValaOS> ");
-        print(input);
-        move_input_cursor(0);
+        if (matches == 1)
+        {
+            int j = 0;
+
+            while (command_list[match_index][j] && j < 62)
+            {
+                input[j] = command_list[match_index][j];
+                j++;
+            }
+
+            input[j] = '\0';
+            input_pos = j;
+            input_cursor = j;
+            redraw_input();
+        }
+        else if (matches > 1)
+        {
+            putchar('\n');
+
+            for (i = 0; i < COMMAND_COUNT; i++)
+            {
+                if (starts_with(command_list[i], input))
+                {
+                    print(command_list[i]);
+                    print("  ");
+                }
+            }
+
+            putchar('\n');
+            print("ValaOS> ");
+            print(input);
+            move_input_cursor(0);
+        }
+
+        return;
+    }
+
+    {
+        int prefix_len = input_pos - word_start;
+        int dir_index = vfs_current_dir_index();
+
+        for (i = 0;; i++)
+        {
+            if (!vfs_complete_name(input + word_start, dir_index, i,
+                                   name, sizeof(name), &is_dir))
+                break;
+
+            matches++;
+            match_index = i;
+        }
+
+        if (matches == 1)
+        {
+            int j = 0;
+
+            while (name[j] && word_start + j < 62)
+            {
+                input[word_start + j] = name[j];
+                j++;
+            }
+
+            input_pos = word_start + j;
+            input[input_pos] = '\0';
+
+            if (is_dir && input_pos < 62)
+            {
+                input[input_pos++] = '/';
+                input[input_pos] = '\0';
+            }
+
+            input_cursor = input_pos;
+            redraw_input();
+        }
+        else if (matches > 1)
+        {
+            putchar('\n');
+
+            for (i = 0;; i++)
+            {
+                if (!vfs_complete_name(input + word_start, dir_index, i,
+                                       name, sizeof(name), &is_dir))
+                    break;
+
+                print(name);
+
+                if (is_dir)
+                    putchar('/');
+
+                print("  ");
+            }
+
+            putchar('\n');
+            print("ValaOS> ");
+            print(input);
+            move_input_cursor(0);
+        }
     }
 }
 
@@ -539,7 +647,6 @@ void keyboard_handler()
     if (key_code == 15)
     {
         autocomplete_command();
-        hide_cursor();
         return;
     }
 
@@ -587,8 +694,6 @@ void keyboard_handler()
         redraw_input();
         history_index = history_count;
     }
-
-    hide_cursor();
 }
 
 void keyboard_process_pending()

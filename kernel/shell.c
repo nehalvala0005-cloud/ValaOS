@@ -17,36 +17,6 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 
-struct task
-{
-    uint32_t pid;
-    const char *name;
-    const char *state;
-    uint32_t stack_base;
-    uint32_t stack_top;
-    struct
-    {
-        uint32_t edi;
-        uint32_t esi;
-        uint32_t ebp;
-        uint32_t esp;
-        uint32_t ebx;
-        uint32_t edx;
-        uint32_t ecx;
-        uint32_t eax;
-        uint32_t eip;
-        uint32_t cs;
-        uint32_t eflags;
-    } context;
-};
-struct user_process
-{
-    uint32_t pid;
-    char name[32];
-    const char *state;
-    int used;
-};
-
 extern void *kmalloc(unsigned int size);
 extern void kfree(void *address);
 extern unsigned int memory_used();
@@ -55,7 +25,11 @@ extern void enter_user_mode(unsigned int user_esp);
 extern void user_task_start();
 extern int prepare_user_process(unsigned int user_esp);
 
-extern struct task *get_tasks();
+extern int get_task_info(
+    int index,
+    unsigned int *pid,
+    const char **name,
+    const char **state);
 extern int get_task_count();
 extern void schedule_once();
 extern unsigned int memory_total();
@@ -78,6 +52,15 @@ extern void vfs_init();
 extern void vfs_list();
 
 extern int vfs_list_dir(const char *name);
+
+extern int vfs_complete_name(
+    const char *prefix,
+    int parent,
+    int index,
+    char *name,
+    int max_size,
+    int *is_dir);
+
 extern int vfs_cat(const char *name);
 extern void vfs_list_programs();
 extern int vfs_read_file(const char *name, char *buffer, int max_size);
@@ -85,6 +68,7 @@ extern int vfs_touch(const char *name);
 extern int vfs_write(const char *name, const char *text);
 extern int vfs_remove(const char *name);
 extern int vfs_mkdir(const char *name);
+extern int vfs_rmdir(const char *name);
 extern int vfs_cd(const char *name);
 extern void vfs_pwd();
 extern int load_user_program(const char *name);
@@ -100,21 +84,30 @@ extern uint8_t inb(uint16_t port);
 extern void outb(uint16_t port, uint8_t value);
 extern void print(const char *str);
 extern void putchar(char c);
+extern void terminal_set_color(unsigned char color);
+
+#define COLOR_DEFAULT 0x07
+#define COLOR_GREEN 0x0A
+#define COLOR_RED 0x0C
+#define COLOR_YELLOW 0x0E
+#define COLOR_CYAN 0x0B
+
 extern int user_process_start(const char *name);
 extern int user_schedule_next();
 extern int user_process_switch();
-extern struct user_process *get_user_processes();
 extern int get_user_process_count();
+extern int get_user_process_info(
+    int index,
+    unsigned int *pid,
+    const char **name,
+    const char **state);
 
-struct process_history_entry
-{
-    unsigned int pid;
-    char name[32];
-    const char *state;
-};
-
-extern struct process_history_entry *get_process_history(void);
 extern int get_process_history_count(void);
+extern int get_process_history_info(
+    int index,
+    unsigned int *pid,
+    const char **name,
+    const char **state);
 
 extern int prepare_user_process_memory(unsigned int user_esp);
 extern void clear_screen();
@@ -194,34 +187,6 @@ void print_number(unsigned int number)
 
         print(output);
     }
-}
-
-int parse_kill_pid(const char *str, unsigned int *pid)
-{
-    unsigned int value = 0;
-    int i = 5;
-
-    if (str[0] != 'k' ||
-        str[1] != 'i' ||
-        str[2] != 'l' ||
-        str[3] != 'l' ||
-        str[4] != ' ')
-        return 0;
-
-    if (str[i] < '0' || str[i] > '9')
-        return 0;
-
-    while (str[i] >= '0' && str[i] <= '9')
-    {
-        value = value * 10 + (str[i] - '0');
-        i++;
-    }
-
-    if (str[i] != '\0')
-        return 0;
-
-    *pid = value;
-    return 1;
 }
 
 int starts_with(const char *str, const char *prefix)
@@ -414,8 +379,7 @@ void selftest()
         failed++;
     }
 
-    if (get_user_processes() != 0 &&
-        get_user_process_count() >= 8)
+    if (get_user_process_count() >= 8)
     {
 
         print("[ OK ] Process Management\n");
@@ -444,6 +408,80 @@ void selftest()
         print("SYSTEM STATUS: CHECK FAILED\n");
 
     print("===========================================\n");
+}
+
+int edit_distance(const char *a, const char *b)
+{
+    int dp[32][32];
+    int i, j;
+    int cost;
+
+    for (i = 0; i <= 31; i++)
+        dp[i][0] = i;
+
+    for (j = 0; j <= 31; j++)
+        dp[0][j] = j;
+
+    for (i = 1; i <= 31 && a[i - 1]; i++)
+    {
+        for (j = 1; j <= 31 && b[j - 1]; j++)
+        {
+            cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+
+            dp[i][j] = dp[i - 1][j] + 1;
+
+            if (dp[i][j - 1] + 1 < dp[i][j])
+                dp[i][j] = dp[i][j - 1] + 1;
+
+            if (dp[i - 1][j - 1] + cost < dp[i][j])
+                dp[i][j] = dp[i - 1][j - 1] + cost;
+        }
+    }
+
+    i = 0;
+    while (i < 31 && a[i])
+        i++;
+
+    j = 0;
+    while (j < 31 && b[j])
+        j++;
+
+    return dp[i][j];
+}
+
+void suggest_command(const char *command)
+{
+    const char *commands[] = {
+        "help", "info", "about", "clear", "version", "echo",
+        "reboot", "shutdown", "memtest", "memstress", "meminfo",
+        "paging", "selftest", "ptest", "dptest", "vmtest",
+        "vmaptest", "pwd", "mkdir", "rmdir", "cd", "ls", "programs",
+        "cat", "touch", "write", "rm", "ps", "uptime", "disktest",
+        "kill", "tasks", "ticks", "schedule", "pagetest",
+        "proctest", "run", "nano", "monitor"};
+
+    int i;
+    int distance;
+    int best_distance = 3;
+    const char *best = 0;
+
+    for (i = 0; i < (int)(sizeof(commands) / sizeof(commands[0])); i++)
+    {
+        distance = edit_distance(command, commands[i]);
+
+        if (distance < best_distance)
+        {
+            best_distance = distance;
+            best = commands[i];
+        }
+    }
+
+    if (best)
+    {
+        print("Did you mean: ");
+        print(best);
+        print("?\n");
+    }
 }
 
 void execute_command()
@@ -494,6 +532,7 @@ void execute_command()
         print("write <file> <text>\n");
         print("rm <file>\n");
         print("mkdir <dir>\n");
+        print("rmdir <dir>\n");
         print("cd <dir>\n");
         print("pwd\n");
         print("disktest\n");
@@ -802,13 +841,17 @@ void execute_command()
 
         if (vfs_mkdir(arg))
         {
-            print("[ VFS ] Directory created: ");
+            terminal_set_color(COLOR_GREEN);
+            print("[ OK ] Directory created: ");
             print(arg);
             print("\n");
+            terminal_set_color(COLOR_DEFAULT);
         }
         else
         {
-            print("[ VFS ] Unable to create directory\n");
+            terminal_set_color(COLOR_RED);
+            print("[ ERROR ] Unable to create directory\n");
+            terminal_set_color(COLOR_DEFAULT);
         }
     }
     else if (starts_with(input, "cd "))
@@ -847,16 +890,28 @@ void execute_command()
         arg = command_argument(input, 4);
 
         if (!vfs_cat(arg))
-            print("[ VFS ] File not found\n");
+        {
+            terminal_set_color(COLOR_RED);
+            print("[ ERROR ] File not found\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
     }
     else if (starts_with(input, "touch "))
     {
         arg = command_argument(input, 6);
 
         if (vfs_touch(arg))
-            print("[ VFS ] File created\n");
+        {
+            terminal_set_color(COLOR_GREEN);
+            print("[ OK ] File created\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
         else
-            print("[ VFS ] Unable to create file\n");
+        {
+            terminal_set_color(COLOR_RED);
+            print("[ ERROR ] Unable to create file\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
     }
     else if (starts_with(input, "write "))
     {
@@ -893,16 +948,39 @@ void execute_command()
         arg = command_argument(input, 3);
 
         if (vfs_remove(arg))
-            print("[ VFS ] File removed\n");
+        {
+            terminal_set_color(COLOR_GREEN);
+            print("[ OK ] File removed\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
         else
-            print("[ VFS ] File not found\n");
+        {
+            terminal_set_color(COLOR_RED);
+            print("[ ERROR ] File not found\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
     }
-    
-  
-   
+
+    else if (starts_with(input, "rmdir "))
+    {
+        arg = command_argument(input, 6);
+
+        if (vfs_rmdir(arg))
+        {
+            terminal_set_color(COLOR_GREEN);
+            print("[ OK ] Directory removed\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
+        else
+        {
+            terminal_set_color(COLOR_RED);
+            print("[ ERROR ] Directory not found or not empty\n");
+            terminal_set_color(COLOR_DEFAULT);
+        }
+    }
+
     else if (compare(input, "ps"))
     {
-        struct task *list = get_tasks();
         int count = get_task_count();
         int i;
 
@@ -910,35 +988,44 @@ void execute_command()
 
         for (i = 0; i < count; i++)
         {
-            print_number(list[i].pid);
+            unsigned int pid;
+            const char *name;
+            const char *state;
+
+            if (!get_task_info(i, &pid, &name, &state))
+                continue;
+
+            print_number(pid);
             print("     ");
-            print(list[i].name);
+            print(name);
             print("      ");
-            print(list[i].state);
+            print(state);
             print("\n");
         }
 
         {
-            struct user_process *users = get_user_processes();
             int user_count = get_user_process_count();
             int j;
 
             for (j = 0; j < user_count; j++)
             {
-                if (!users[j].used)
+                unsigned int pid;
+                const char *name;
+                const char *state;
+
+                if (!get_user_process_info(j, &pid, &name, &state))
                     continue;
 
-                print_number(users[j].pid);
+                print_number(pid);
                 print("     ");
-                print(users[j].name);
+                print(name);
                 print("      ");
-                print(users[j].state);
+                print(state);
                 print("\n");
             }
         }
 
         {
-            struct process_history_entry *history = get_process_history();
             int history_count = get_process_history_count();
             int h;
 
@@ -949,11 +1036,18 @@ void execute_command()
 
                 for (h = 0; h < history_count; h++)
                 {
-                    print_number(history[h].pid);
+                    unsigned int pid;
+                    const char *name;
+                    const char *state;
+
+                    if (!get_process_history_info(h, &pid, &name, &state))
+                        continue;
+
+                    print_number(pid);
                     print("     ");
-                    print(history[h].name);
+                    print(name);
                     print("      ");
-                    print(history[h].state);
+                    print(state);
                     print("\n");
                 }
             }
@@ -976,14 +1070,28 @@ void execute_command()
     {
         disk_test();
     }
-    else if (argc == 1 && compare(command, "kill"))
+    else if (compare(command, "kill"))
     {
         int i = 0;
+        int digit;
         kill_pid = 0;
+
+        if (argc != 1 || args[0][0] == '\0')
+        {
+            print("[ ERROR ] Invalid PID\n");
+            goto command_done;
+        }
 
         while (args[0][i] >= '0' && args[0][i] <= '9')
         {
-            kill_pid = kill_pid * 10 + (args[0][i] - '0');
+            digit = args[0][i] - '0';
+            if (kill_pid > (0xFFFFFFFFU - (unsigned int)digit) / 10)
+            {
+                print("[ ERROR ] Invalid PID\n");
+                goto command_done;
+            }
+
+            kill_pid = kill_pid * 10 + (unsigned int)digit;
             i++;
         }
 
@@ -1001,6 +1109,12 @@ void execute_command()
             print_number(kill_pid);
             print(" terminated\n");
         }
+        else if (result == 2)
+        {
+            print("[ TASK ] PID ");
+            print_number(kill_pid);
+            print(" termination requested\n");
+        }
         else if (result == -1)
         {
             print("[ ERROR ] Cannot terminate protected task\n");
@@ -1011,6 +1125,10 @@ void execute_command()
             print_number(kill_pid);
             print(" already terminated\n");
         }
+        else if (result == -3)
+        {
+            print("[ ERROR ] PID could not be terminated safely\n");
+        }
         else
         {
             print("[ ERROR ] PID not found\n");
@@ -1018,7 +1136,6 @@ void execute_command()
     }
     else if (compare(input, "tasks"))
     {
-        struct task *list = get_tasks();
         int count = get_task_count();
         int i;
 
@@ -1026,16 +1143,18 @@ void execute_command()
 
         for (i = 0; i < count; i++)
         {
-            if (list[i].pid == 1)
-                print("1     ");
-            else if (list[i].pid == 2)
-                print("2     ");
-            else if (list[i].pid == 3)
-                print("3     ");
+            unsigned int pid;
+            const char *name;
+            const char *state;
 
-            print(list[i].name);
+            if (!get_task_info(i, &pid, &name, &state))
+                continue;
+
+            print_number(pid);
+            print("     ");
+            print(name);
             print("      ");
-            print(list[i].state);
+            print(state);
             print("\n");
         }
     }
@@ -1183,6 +1302,7 @@ void execute_command()
 
                 if (!prepare_user_process_memory(user_esp))
                 {
+                    task_kill((unsigned int)pid);
                     print("[ ERROR ] Unable to prepare process memory\n");
                     goto command_done;
                 }
@@ -1217,9 +1337,15 @@ void execute_command()
     {
         shutdown_system();
     }
+
     else if (input_pos > 0)
     {
-        print("Unknown command\n");
+        terminal_set_color(COLOR_RED);
+        print("Unknown command: ");
+        print(command);
+        print("\n");
+        terminal_set_color(COLOR_DEFAULT);
+        suggest_command(command);
     }
 
 command_done:
