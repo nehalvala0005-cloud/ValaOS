@@ -17,6 +17,7 @@ syscall_isr:
     cmp eax, 1
     je syscall_exit
 
+    mov [esp + 28], eax
     popa
     iretd
 

@@ -1,3 +1,4 @@
+
 /*
  * ValaOS
  * Copyright (c) 2026 Nehal Vala
@@ -10,6 +11,10 @@ extern void user_task_exit(void);
 #define SYS_WRITE 1
 #define SYS_EXIT 2
 
+#define SYSCALL_OK 0
+#define SYSCALL_EXIT 1
+#define SYSCALL_ERROR -1
+
 int syscall_handler(unsigned int syscall_number, unsigned int value) {
     char output[2];
 
@@ -21,7 +26,7 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
         print(output);
         print("\n");
 
-        return 0;
+        return SYSCALL_OK;
     }
 
     if (syscall_number == SYS_EXIT) {
@@ -30,8 +35,8 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
         print("[ USER ] sys_exit called\n");
         print("[ OK ] User task terminated\n");
 
-        return 1;
+        return SYSCALL_EXIT;
     }
 
-    return 0;
+    return SYSCALL_ERROR;
 }
