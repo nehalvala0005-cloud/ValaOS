@@ -6,7 +6,7 @@
  */
 
 extern void print(const char* str);
-extern void user_task_exit(void);
+extern void user_task_exit(unsigned int exit_code);
 
 #define SYS_WRITE 1
 #define SYS_EXIT 2
@@ -30,7 +30,7 @@ int syscall_handler(unsigned int syscall_number, unsigned int value) {
     }
 
     if (syscall_number == SYS_EXIT) {
-        user_task_exit();
+        user_task_exit(value);
 
         print("[ USER ] sys_exit called\n");
         print("[ OK ] User task terminated\n");

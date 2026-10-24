@@ -13,6 +13,12 @@ typedef unsigned int uint32_t;
 #define TASK_BLOCKED "BLOCKED"
 #define TASK_TERMINATED "TERMINATED"
 
+#define PROCESS_REASON_NONE "NONE"
+#define PROCESS_REASON_EXIT "EXIT"
+#define PROCESS_REASON_FAULT "PAGE_FAULT"
+#define PROCESS_REASON_KILLED "KILLED"
+#define PROCESS_REASON_START_FAILED "START_FAILED"
+
 #define TASK_STACK_SIZE 4096
 #define MAX_KERNEL_TASKS 3
 #define MAX_USER_PROCESSES 8
@@ -73,6 +79,8 @@ struct user_process
     struct user_context user_context;
     uint32_t stack_base;
     uint32_t stack_top;
+    const char *termination_reason;
+    uint32_t exit_code;
 };
 
 
@@ -83,6 +91,8 @@ struct process_history_entry
     uint32_t pid;
     char name[USER_PROCESS_NAME_SIZE];
     const char *state;
+    const char *reason;
+    uint32_t exit_code;
 };
 
 static struct process_history_entry process_history[PROCESS_HISTORY_SIZE];
@@ -91,7 +101,12 @@ static int process_history_count = 0;
 static void copy_process_name(char *destination, const char *source);
 static int process_history_contains(uint32_t pid);
 
-static void record_process_history(uint32_t pid, const char *name, const char *state)
+static void record_process_history(
+    uint32_t pid,
+    const char *name,
+    const char *state,
+    const char *reason,
+    uint32_t exit_code)
 {
     int i;
 
@@ -116,6 +131,8 @@ static void record_process_history(uint32_t pid, const char *name, const char *s
     );
 
     process_history[process_history_count].state = state;
+    process_history[process_history_count].reason = reason;
+    process_history[process_history_count].exit_code = exit_code;
     process_history_count++;
 }
 
@@ -141,6 +158,21 @@ int get_process_history_info(
     *pid = process_history[index].pid;
     *name = process_history[index].name;
     *state = process_history[index].state;
+    return 1;
+}
+
+int get_process_history_details(
+    int index,
+    const char **reason,
+    uint32_t *exit_code)
+{
+    if (index < 0 || index >= process_history_count)
+        return 0;
+
+    if (reason)
+        *reason = process_history[index].reason;
+    if (exit_code)
+        *exit_code = process_history[index].exit_code;
     return 1;
 }
 
@@ -273,10 +305,14 @@ void task_context_init()
         user_processes[i].state = TASK_TERMINATED;
         user_processes[i].used = 0;
         user_processes[i].cr3 = 0;
+        user_processes[i].code_page = 0;
+        user_processes[i].stack_page = 0;
         user_processes[i].context.esp = 0;
         user_processes[i].context.eip = 0;
         user_processes[i].context.cs = 0;
         user_processes[i].context.eflags = 0;
+        user_processes[i].termination_reason = PROCESS_REASON_NONE;
+        user_processes[i].exit_code = 0;
         user_processes[i].stack_base =
             (uint32_t)&user_task_stacks[i][0];
 
@@ -397,65 +433,91 @@ static uint32_t allocate_user_pid(void)
 int user_process_start(const char *name)
 {
     int i;
-    uint32_t code_page;
-    uint32_t stack_page;
-    uint32_t cr3;
+    int slot = -1;
+    uint32_t code_page = 0;
+    uint32_t stack_page = 0;
+    uint32_t cr3 = 0;
+    uint32_t saved_eflags;
+    struct user_process *process;
+
+    __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
+
+    if (get_page_directory() != paging_get_kernel_directory())
+        goto failed;
 
     for (i = 0; i < MAX_USER_PROCESSES; i++)
     {
         if (!user_processes[i].used)
         {
-            code_page = (uint32_t)page_alloc(1);
-            if (!code_page)
-                return -1;
-
-            stack_page = (uint32_t)page_alloc(1);
-            if (!stack_page)
-            {
-                page_free((void *)code_page, 1);
-                return -1;
-            }
-
-            cr3 = paging_create_process_directory(
-                code_page,
-                stack_page);
-
-            if (!cr3)
-            {
-                page_free((void *)stack_page, 1);
-                page_free((void *)code_page, 1);
-                return -1;
-            }
-
-            user_processes[i].pid = allocate_user_pid();
-            user_processes[i].state = TASK_READY;
-            user_processes[i].used = 1;
-            user_processes[i].cr3 = cr3;
-            user_processes[i].code_page = code_page;
-            user_processes[i].stack_page = stack_page;
-
-            user_processes[i].user_context.eip = 0x00400000;
-            user_processes[i].user_context.cs = 0x1B;
-            user_processes[i].user_context.eflags = 0x202;
-            user_processes[i].user_context.user_esp = 0x00801000;
-            user_processes[i].user_context.user_ss = 0x23;
-
-            user_processes[i].user_context.edi = 0;
-            user_processes[i].user_context.esi = 0;
-            user_processes[i].user_context.ebp = 0;
-            user_processes[i].user_context.esp = 0;
-            user_processes[i].user_context.ebx = 0;
-            user_processes[i].user_context.edx = 0;
-            user_processes[i].user_context.ecx = 0;
-            user_processes[i].user_context.eax = 0;
-
-            copy_process_name(user_processes[i].name, name);
-
-            active_user_process = i;
-            return user_processes[i].pid;
+            slot = i;
+            break;
         }
     }
 
+    if (slot < 0)
+        goto failed;
+
+    code_page = (uint32_t)page_alloc(1);
+    if (!code_page)
+        goto failed;
+
+    stack_page = (uint32_t)page_alloc(1);
+    if (!stack_page)
+        goto failed;
+
+    cr3 = paging_create_process_directory(code_page, stack_page);
+    if (!cr3)
+        goto failed;
+
+    process = &user_processes[slot];
+    process->pid = allocate_user_pid();
+    process->cr3 = cr3;
+    process->code_page = code_page;
+    process->stack_page = stack_page;
+    process->state = TASK_BLOCKED;
+    process->termination_reason = PROCESS_REASON_NONE;
+    process->exit_code = 0;
+    process->user_context.eip = 0x00400000;
+    process->user_context.cs = 0x1B;
+    process->user_context.eflags = 0x202;
+    process->user_context.user_esp = 0x00801000;
+    process->user_context.user_ss = 0x23;
+    process->user_context.edi = 0;
+    process->user_context.esi = 0;
+    process->user_context.ebp = 0;
+    process->user_context.esp = 0;
+    process->user_context.ebx = 0;
+    process->user_context.edx = 0;
+    process->user_context.ecx = 0;
+    process->user_context.eax = 0;
+    process->context.edi = 0;
+    process->context.esi = 0;
+    process->context.ebp = 0;
+    process->context.esp = 0;
+    process->context.ebx = 0;
+    process->context.edx = 0;
+    process->context.ecx = 0;
+    process->context.eax = 0;
+    process->context.eip = 0;
+    process->context.cs = 0;
+    process->context.eflags = 0;
+    copy_process_name(process->name, name ? name : "user");
+
+    /* Publish the slot only after every resource and context field is ready. */
+    process->used = 1;
+    active_user_process = slot;
+
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+    return process->pid;
+
+failed:
+    if (cr3)
+        page_free((void *)cr3, 1);
+    if (stack_page)
+        page_free((void *)stack_page, 1);
+    if (code_page)
+        page_free((void *)code_page, 1);
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
     return -1;
 }
 
@@ -464,11 +526,11 @@ int user_process_schedule_next()
     int i;
     int next;
 
-    if (active_user_process < 0)
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used ||
+        user_processes[active_user_process].state != TASK_RUNNING)
         return -1;
-
-    if (user_processes[active_user_process].state == TASK_TERMINATED)
-        return 0;
 
     for (i = 1; i < MAX_USER_PROCESSES; i++)
     {
@@ -478,7 +540,8 @@ int user_process_schedule_next()
             next -= MAX_USER_PROCESSES;
 
         if (user_processes[next].used &&
-            user_processes[next].state != TASK_TERMINATED &&
+            user_processes[next].state == TASK_READY &&
+            user_processes[next].cr3 != 0 &&
             user_processes[next].user_context.eip != 0)
         {
             user_processes[active_user_process].state =
@@ -507,23 +570,31 @@ int user_process_copy_memory(
     const unsigned char *stack;
     uint32_t code_page;
     uint32_t stack_page;
+    uint32_t saved_eflags;
+    uint32_t process_directory;
     uint32_t i;
     int index;
 
+    __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
+
     if (active_user_process < 0 ||
         active_user_process >= MAX_USER_PROCESSES)
-        return 0;
+        goto copy_failed;
 
     index = active_user_process;
 
-    if (!user_processes[index].used)
-        return 0;
+    if (!user_processes[index].used ||
+        user_processes[index].state != TASK_BLOCKED ||
+        !code_source || !stack_source ||
+        get_page_directory() != paging_get_kernel_directory())
+        goto copy_failed;
 
     code_page = user_processes[index].code_page;
     stack_page = user_processes[index].stack_page;
 
-    if (!code_page || !stack_page)
-        return 0;
+    if (!code_page || !stack_page ||
+        !user_processes[index].cr3)
+        goto copy_failed;
 
     code_destination = (unsigned char *)code_page;
     stack_destination = (unsigned char *)stack_page;
@@ -541,9 +612,17 @@ int user_process_copy_memory(
     user_processes[index].user_context.cs = 0x1B;
     user_processes[index].user_context.user_ss = 0x23;
 
-    switch_page_directory(user_processes[index].cr3);
+    process_directory = user_processes[index].cr3;
+    switch_page_directory(process_directory);
+    user_processes[index].state = TASK_READY;
+
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
 
     return 1;
+
+copy_failed:
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+    return 0;
 }
 
 static int terminate_user_process(int index)
@@ -579,10 +658,16 @@ static int terminate_user_process(int index)
         return 0;
     }
 
+    if (!user_processes[index].termination_reason ||
+        user_processes[index].termination_reason == PROCESS_REASON_NONE)
+        user_processes[index].termination_reason = PROCESS_REASON_KILLED;
+
     record_process_history(
         user_processes[index].pid,
         user_processes[index].name,
-        "TERMINATED");
+        TASK_TERMINATED,
+        user_processes[index].termination_reason,
+        user_processes[index].exit_code);
 
     table1 = 0;
     table2 = 0;
@@ -619,6 +704,11 @@ static int terminate_user_process(int index)
     user_processes[index].name[0] = '\0';
     user_processes[index].user_context.eip = 0;
     user_processes[index].user_context.user_esp = 0;
+    user_processes[index].user_context.cs = 0;
+    user_processes[index].user_context.eflags = 0;
+    user_processes[index].user_context.user_ss = 0;
+    user_processes[index].termination_reason = PROCESS_REASON_NONE;
+    user_processes[index].exit_code = 0;
 
     if (code_page)
         page_free((void *)code_page, 1);
@@ -656,7 +746,31 @@ int user_process_fault_terminate(uint32_t *pid)
     if (pid)
         *pid = user_processes[index].pid;
 
+    user_processes[index].termination_reason = PROCESS_REASON_FAULT;
+    user_processes[index].exit_code = 0;
+
     return terminate_user_process(index);
+}
+
+int user_process_abort(uint32_t pid)
+{
+    int i;
+
+    for (i = 0; i < MAX_USER_PROCESSES; i++)
+    {
+        if (user_processes[i].used && user_processes[i].pid == pid)
+        {
+            if (user_processes[i].state == TASK_RUNNING)
+                return 0;
+
+            user_processes[i].termination_reason =
+                PROCESS_REASON_START_FAILED;
+            user_processes[i].exit_code = 0;
+            return terminate_user_process(i);
+        }
+    }
+
+    return 0;
 }
 
 int user_process_reap_pending(void)
@@ -673,7 +787,7 @@ int user_process_reap_pending(void)
     return terminate_user_process(index);
 }
 
-void user_process_exit(void)
+void user_process_exit(uint32_t exit_code)
 {
     if (active_user_process < 0 ||
         active_user_process >= MAX_USER_PROCESSES)
@@ -681,6 +795,10 @@ void user_process_exit(void)
         user_task_state = TASK_TERMINATED;
         return;
     }
+
+    user_processes[active_user_process].termination_reason =
+        PROCESS_REASON_EXIT;
+    user_processes[active_user_process].exit_code = exit_code;
 
     if (!terminate_user_process(active_user_process))
         user_task_state = TASK_TERMINATED;
@@ -704,16 +822,22 @@ int user_process_kill(uint32_t pid)
     int i;
     uint32_t saved_eflags;
 
+    __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
+
     for (i = 0; i < MAX_USER_PROCESSES; i++)
     {
         if (user_processes[i].used &&
             user_processes[i].pid == pid)
         {
             if (user_processes[i].state == TASK_TERMINATED)
+            {
+                __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
                 return -2;
+            }
 
-            __asm__ volatile("pushfl; popl %0; cli" : "=r"(saved_eflags) : : "memory");
             user_processes[i].state = TASK_TERMINATED;
+            user_processes[i].termination_reason = PROCESS_REASON_KILLED;
+            user_processes[i].exit_code = 0;
 
             if (active_user_process == i &&
                 user_task_state == TASK_RUNNING)
@@ -723,12 +847,18 @@ int user_process_kill(uint32_t pid)
                 return 2;
             }
 
-            __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
-            return terminate_user_process(i) ? 1 : -3;
+            {
+                int terminated = terminate_user_process(i);
+                __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+                return terminated ? 1 : -3;
+            }
+
         }
     }
 
-    if (process_history_contains(pid))
+    i = process_history_contains(pid);
+    __asm__ volatile("pushl %0; popfl" : : "r"(saved_eflags) : "memory", "cc");
+    if (i)
         return -2;
 
     return 0;
@@ -751,6 +881,7 @@ void schedule_once()
 {
     int i;
     int next_task = current_task;
+    int found = 0;
 
     if (task_count <= 0)
         return;
@@ -765,11 +896,16 @@ void schedule_once()
         while (next_task >= task_count)
             next_task -= task_count;
 
-        if (tasks[next_task].state[0] != 'T')
+        if ((tasks[next_task].state == TASK_READY ||
+             tasks[next_task].state == TASK_RUNNING) &&
+            (next_task == current_task || tasks[next_task].context.esp != 0))
+        {
+            found = 1;
             break;
+        }
     }
 
-    if (tasks[next_task].state[0] == 'T')
+    if (!found)
         return;
 
     current_task = next_task;
@@ -786,6 +922,15 @@ void schedule_once()
 uint32_t task_switch_prepare(uint32_t current_esp)
 {
     int previous_task = current_task;
+
+    if (task_count <= 0)
+        return current_esp;
+
+    if (previous_task < 0 || previous_task >= task_count)
+    {
+        previous_task = 0;
+        current_task = 0;
+    }
 
     tasks[previous_task].context.esp = current_esp;
 
@@ -807,10 +952,12 @@ int user_schedule_next()
     int i;
     int next;
 
-    if (active_user_process < 0)
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used)
         return 0;
 
-    if (user_processes[active_user_process].state == TASK_TERMINATED)
+    if (user_processes[active_user_process].state != TASK_RUNNING)
         return 0;
 
     for (i = 1; i < MAX_USER_PROCESSES; i++)
@@ -821,7 +968,8 @@ int user_schedule_next()
             next -= MAX_USER_PROCESSES;
 
         if (user_processes[next].used &&
-            user_processes[next].state != TASK_TERMINATED &&
+            user_processes[next].state == TASK_READY &&
+            user_processes[next].cr3 != 0 &&
             user_processes[next].user_context.eip != 0)
         {
             user_processes[active_user_process].state =
@@ -841,7 +989,9 @@ int user_schedule_next()
 struct user_context *get_next_user_context()
 {
     if (active_user_process < 0 ||
-        active_user_process >= MAX_USER_PROCESSES)
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used ||
+        user_processes[active_user_process].state != TASK_RUNNING)
         return 0;
 
     return &user_processes[active_user_process].user_context;
@@ -855,7 +1005,11 @@ int user_process_switch()
 
     context = get_next_user_context();
 
-    if (context == 0)
+    if (context == 0 || active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used ||
+        user_processes[active_user_process].state != TASK_RUNNING ||
+        !user_processes[active_user_process].cr3)
         return 0;
 
     switch_page_directory(
@@ -865,7 +1019,9 @@ int user_process_switch()
 }
 int user_context_switch_prepare(uint32_t *frame)
 {
-    if (active_user_process < 0)
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used)
         return 0;
 
     user_context_save(frame);
@@ -890,13 +1046,19 @@ void scheduler_tick()
     }
 }
 
-void user_task_start()
+int user_task_start()
 {
-    if (current_task >= 0 && current_task < MAX_KERNEL_TASKS)
-    {
-        tss_set_kernel_stack(
-            (uint32_t)&user_entry_stacks[current_task][TASK_STACK_SIZE]);
-    }
+    if (active_user_process < 0 ||
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used ||
+        user_processes[active_user_process].state != TASK_READY ||
+        !user_processes[active_user_process].cr3 ||
+        get_page_directory() != user_processes[active_user_process].cr3 ||
+        current_task < 0 || current_task >= MAX_KERNEL_TASKS)
+        return 0;
+
+    tss_set_kernel_stack(
+        (uint32_t)&user_entry_stacks[current_task][TASK_STACK_SIZE]);
 
     user_task_state = TASK_RUNNING;
 
@@ -904,11 +1066,13 @@ void user_task_start()
         active_user_process < MAX_USER_PROCESSES &&
         user_processes[active_user_process].used)
         user_processes[active_user_process].state = TASK_RUNNING;
+
+    return 1;
 }
 
-void user_task_exit()
+void user_task_exit(uint32_t exit_code)
 {
-    user_process_exit();
+    user_process_exit(exit_code);
 }
 
 const char *get_user_task_state()
@@ -964,7 +1128,9 @@ void user_context_save(uint32_t *frame)
 struct user_context *get_active_user_context()
 {
     if (active_user_process < 0 ||
-        active_user_process >= MAX_USER_PROCESSES)
+        active_user_process >= MAX_USER_PROCESSES ||
+        !user_processes[active_user_process].used ||
+        user_processes[active_user_process].state != TASK_RUNNING)
         return 0;
 
     return &user_processes[active_user_process].user_context;

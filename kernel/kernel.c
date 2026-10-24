@@ -24,7 +24,8 @@ extern int map_page_flags(
 
 extern void enter_user_mode(unsigned int user_esp);
 extern void enter_user_program(unsigned int address);
-extern void user_task_start();
+extern int user_task_start();
+extern int user_process_abort(unsigned int pid);
 extern int vfs_read_file(const char *name, char *buffer, int max_size);
 extern int user_process_copy_memory(
     const void *code_source,
@@ -311,11 +312,15 @@ int run_syscall_reliability_test(void)
             user_stack_page,
             USER_STACK_BASE + USER_STACK_SIZE))
     {
-        task_kill((unsigned int)pid);
+        user_process_abort((unsigned int)pid);
         return 0;
     }
 
-    user_task_start();
+    if (!user_task_start())
+    {
+        user_process_abort((unsigned int)pid);
+        return 0;
+    }
     enter_user_mode(USER_STACK_BASE + USER_STACK_SIZE);
 
     return 1;

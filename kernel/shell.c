@@ -23,7 +23,7 @@ extern unsigned int memory_used();
 extern unsigned int memory_free();
 extern void enter_user_mode(unsigned int user_esp);
 extern int run_syscall_reliability_test(void);
-extern void user_task_start();
+extern int user_task_start();
 extern int prepare_user_process(unsigned int user_esp);
 
 extern int get_task_info(
@@ -94,6 +94,7 @@ extern void terminal_set_color(unsigned char color);
 #define COLOR_CYAN 0x0B
 
 extern int user_process_start(const char *name);
+extern int user_process_abort(unsigned int pid);
 extern int user_schedule_next();
 extern int user_process_switch();
 extern int get_user_process_count();
@@ -109,6 +110,10 @@ extern int get_process_history_info(
     unsigned int *pid,
     const char **name,
     const char **state);
+extern int get_process_history_details(
+    int index,
+    const char **reason,
+    unsigned int *exit_code);
 
 extern int prepare_user_process_memory(unsigned int user_esp);
 extern void clear_screen();
@@ -1110,15 +1115,19 @@ void execute_command()
             if (history_count > 0)
             {
                 print("\nProcess History:\n");
-                print("PID   NAME      STATE\n");
+                print("PID   NAME      STATE       REASON       EXIT\n");
 
                 for (h = 0; h < history_count; h++)
                 {
                     unsigned int pid;
+                    unsigned int exit_code;
                     const char *name;
                     const char *state;
+                    const char *reason;
 
                     if (!get_process_history_info(h, &pid, &name, &state))
+                        continue;
+                    if (!get_process_history_details(h, &reason, &exit_code))
                         continue;
 
                     print_number(pid);
@@ -1126,6 +1135,10 @@ void execute_command()
                     print(name);
                     print("      ");
                     print(state);
+                    print("   ");
+                    print(reason);
+                    print("   ");
+                    print_number(exit_code);
                     print("\n");
                 }
             }
@@ -1313,6 +1326,7 @@ void execute_command()
 
         if (pid2 < 0)
         {
+            user_process_abort((unsigned int)pid1);
             print("[ ERROR ] Second process could not start\n");
             goto command_done;
         }
@@ -1325,16 +1339,12 @@ void execute_command()
         print_number(pid2);
         print(" created\n");
 
-        print("[ SCHED ] Switching to next user process\n");
+        print("[ SCHED ] Both entries are BLOCKED until their image and context are ready\n");
+        print("[ SCHED ] Incomplete processes are not eligible for selection\n");
 
-        if (user_process_switch())
-        {
-            print("[ SCHED ] User process switched\n");
-        }
-        else
-        {
-            print("[ SCHED ] User process switch failed\n");
-        }
+        user_process_abort((unsigned int)pid1);
+        user_process_abort((unsigned int)pid2);
+        print("[ PROCESS ] Test entries cleaned up\n");
     }
 
     else if (compare(command, "syscalltest"))
@@ -1390,7 +1400,7 @@ void execute_command()
 
                 if (!prepare_user_process_memory(user_esp))
                 {
-                    task_kill((unsigned int)pid);
+                    user_process_abort((unsigned int)pid);
                     print("[ ERROR ] Unable to prepare process memory\n");
                     goto command_done;
                 }
@@ -1399,7 +1409,12 @@ void execute_command()
                 print_number(pid);
                 print(" started\n");
 
-                user_task_start();
+                if (!user_task_start())
+                {
+                    user_process_abort((unsigned int)pid);
+                    print("[ ERROR ] Unable to enter process\n");
+                    goto command_done;
+                }
                 enter_user_mode(user_esp);
             }
             else
