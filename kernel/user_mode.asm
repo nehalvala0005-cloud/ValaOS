@@ -1,6 +1,5 @@
-section .text
+section .data
 
-global enter_user_mode
 global user_return_esp
 global user_return_eflags
 global user_return_eip
@@ -29,6 +28,10 @@ user_return_edi:
 
 user_return_ebp:
     dd 0
+
+section .text
+
+global enter_user_mode
 
 enter_user_mode:
     mov eax, esp

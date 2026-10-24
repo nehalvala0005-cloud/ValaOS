@@ -8,6 +8,10 @@
 
 extern void* page_alloc(uint32_t pages);
 extern void page_free(void* address, uint32_t pages);
+extern unsigned char __kernel_ro_start;
+extern unsigned char __kernel_ro_end;
+
+int set_page_flags(uint32_t *virtual_address, uint32_t flags);
 
 #define PAGE_SIZE 4096
 #define INITIAL_PAGE_TABLES 4
@@ -16,6 +20,9 @@ extern void page_free(void* address, uint32_t pages);
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
 #define PAGE_USER 0x004
+
+#define USER_CODE_VIRTUAL 0x00400000U
+#define USER_STACK_VIRTUAL 0x00800000U
 
 static uint32_t page_directory[1024]
     __attribute__((aligned(4096)));
@@ -59,6 +66,8 @@ void paging_init() {
     uint32_t i;
     uint32_t j;
     uint32_t cr0;
+    uint32_t address;
+    uint32_t read_only_end;
 
     for (i = 0; i < 1024; i++)
         page_directory[i] = 0;
@@ -99,6 +108,15 @@ void paging_init() {
         :
         : "r"(cr0)
     );
+
+    /* Protect linked kernel text and read-only data from supervisor writes. */
+    address = (uint32_t)&__kernel_ro_start & 0xFFFFF000;
+    read_only_end = ((uint32_t)&__kernel_ro_end + PAGE_SIZE - 1) &
+                    0xFFFFF000;
+    while (address < read_only_end) {
+        set_page_flags((uint32_t *)address, PAGE_PRESENT);
+        address += PAGE_SIZE;
+    }
 }
 
 int paging_enabled() {
@@ -120,6 +138,10 @@ int map_page_flags(
     uint32_t directory_index;
     uint32_t table_index;
     uint32_t* table;
+
+    /* User mappings are owned by a process directory, never the kernel map. */
+    if (flags & PAGE_USER)
+        return 0;
 
     if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
@@ -286,6 +308,10 @@ int set_page_flags(
     uint32_t table_index;
     uint32_t* table;
 
+    /* Do not let callers elevate a shared kernel mapping to user access. */
+    if (flags & PAGE_USER)
+        return 0;
+
     if ((uint32_t)virtual_address % PAGE_SIZE != 0)
         return 0;
 
@@ -372,6 +398,14 @@ uint32_t paging_create_process_directory(
     uint32_t *stack_table;
     uint32_t i;
 
+    if (!code_page || !stack_page ||
+        (code_page & (PAGE_SIZE - 1)) ||
+        (stack_page & (PAGE_SIZE - 1)) ||
+        code_page == stack_page ||
+        !(page_directory[1] & PAGE_PRESENT) ||
+        !(page_directory[2] & PAGE_PRESENT))
+        return 0;
+
     directory = (uint32_t *)page_alloc(1);
     if (!directory)
         return 0;
@@ -393,29 +427,34 @@ uint32_t paging_create_process_directory(
 
     for (i = 0; i < 1024; i++)
     {
-        directory[i] = page_directory[i];
-        code_table[i] = page_tables[1][i];
-        stack_table[i] = page_tables[2][i];
+        /* A kernel PDE must never inherit user permission into a process. */
+        directory[i] = page_directory[i] & ~PAGE_USER;
+        code_table[i] =
+            ((uint32_t *)(page_directory[1] & 0xFFFFF000))[i] &
+            ~PAGE_USER;
+        stack_table[i] =
+            ((uint32_t *)(page_directory[2] & 0xFFFFF000))[i] &
+            ~PAGE_USER;
     }
 
-    code_table[0] =
+    code_table[(USER_CODE_VIRTUAL >> 12) & 0x3FF] =
         (code_page & 0xFFFFF000) |
         PAGE_PRESENT |
         PAGE_USER;
 
-    stack_table[0] =
+    stack_table[(USER_STACK_VIRTUAL >> 12) & 0x3FF] =
         (stack_page & 0xFFFFF000) |
         PAGE_PRESENT |
         PAGE_WRITABLE |
         PAGE_USER;
 
-    directory[1] =
+    directory[USER_CODE_VIRTUAL >> 22] =
         ((uint32_t)code_table & 0xFFFFF000) |
         PAGE_PRESENT |
         PAGE_WRITABLE |
         PAGE_USER;
 
-    directory[2] =
+    directory[USER_STACK_VIRTUAL >> 22] =
         ((uint32_t)stack_table & 0xFFFFF000) |
         PAGE_PRESENT |
         PAGE_WRITABLE |
