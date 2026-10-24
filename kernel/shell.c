@@ -160,6 +160,7 @@ void shutdown_system()
         __asm__ volatile("cli; hlt");
 }
 
+
 void print_number(unsigned int number)
 {
     char buffer[10];
@@ -174,21 +175,18 @@ void print_number(unsigned int number)
 
     while (number > 0)
     {
-        buffer[i] = '0' + (number % 10);
-        number = number / 10;
-        i++;
+        buffer[i++] = '0' + (number % 10);
+        number /= 10;
     }
 
     while (i > 0)
     {
-        i--;
-
-        output[0] = buffer[i];
+        output[0] = buffer[--i];
         output[1] = '\0';
-
         print(output);
     }
 }
+
 
 int starts_with(const char *str, const char *prefix)
 {
@@ -696,6 +694,11 @@ void execute_command()
 
     else if (compare(input, "meminfo"))
     {
+        unsigned int used_pages = memory_used_pages();
+        unsigned int total_pages = 1024;
+        unsigned int used_memory = used_pages * 4096;
+        unsigned int total_memory = 4194304;
+
         print("==============================\n");
         print("       ValaOS MEMORY INFO\n");
         print("==============================\n");
@@ -704,19 +707,24 @@ void execute_command()
         print("Page Size    : 4096 bytes\n");
         print("Total Pages  : 1024\n");
 
-        if (memory_used_pages() == 0)
-        {
-            print("Used Pages   : 0\n");
-            print("Used Memory  : 0 bytes\n");
-            print("Free Memory  : 4194304 bytes\n");
-        }
-        else
-        {
-            print("Memory allocated\n");
-        }
+        print("Used Pages   : ");
+        print_number(used_pages);
+        print("\n");
 
-        print("Status       : Healthy\n");
+        print("Used Memory  : ");
+        print_number(used_memory);
+        print(" bytes\n");
+
+        print("Free Memory  : ");
+        print_number(total_memory - used_memory);
+        print(" bytes\n");
+
+        if (used_pages <= total_pages)
+            print("Status       : Counter OK\n");
+        else
+            print("Status       : ERROR\n");
     }
+
     else if (compare(input, "paging"))
     {
         print("==============================\n");

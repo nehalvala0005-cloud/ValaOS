@@ -25,7 +25,7 @@ syscall_exit:
     mov esp, [user_return_esp]
     push dword [user_return_eflags]
 
-    mov ax, 0x10
+    mov ax, 0x08
     mov ds, ax
     mov es, ax
     mov fs, ax

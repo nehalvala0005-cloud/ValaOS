@@ -52,7 +52,7 @@ timer_isr:
     ; Match the established SYS_EXIT return path: abandon the user IRQ
     ; frame and return to the kernel continuation saved by enter_user_mode.
     mov esp, [user_return_esp]
-    mov ax, 0x10
+    mov ax, 0x08
     mov ds, ax
     mov es, ax
     mov fs, ax
