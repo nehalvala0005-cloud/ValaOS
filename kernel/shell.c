@@ -593,7 +593,14 @@ void execute_command()
         void *b = 0;
         void *c = 0;
         void *d = 0;
+        void *page_pair;
+        void *held[128];
+        void *extra;
+        int held_count = 0;
+        int i;
         int passed = 1;
+        unsigned int before;
+        unsigned int allocation_baseline;
 
         print("Memory Stress Test\n\n");
 
@@ -610,6 +617,14 @@ void execute_command()
         else
         {
             print("[FAIL] Oversized allocation accepted\n");
+            passed = 0;
+        }
+
+        if (kmalloc(0xFFFFFFFFU) == 0)
+            print("[ OK ] UINT32_MAX allocation rejected\n");
+        else
+        {
+            print("[FAIL] UINT32_MAX allocation accepted\n");
             passed = 0;
         }
 
@@ -691,6 +706,59 @@ void execute_command()
         if (d)
             kfree(d);
 
+        page_pair = page_alloc(2);
+        if (page_pair)
+        {
+            before = memory_used();
+            page_free(page_pair, 1);
+            if (memory_used() == before)
+                print("[ OK ] Mismatched page-free count rejected\n");
+            else
+            {
+                print("[FAIL] Mismatched page-free changed accounting\n");
+                passed = 0;
+            }
+
+            page_free(page_pair, 2);
+        }
+        else
+        {
+            print("[FAIL] Two-page allocation for free test failed\n");
+            passed = 0;
+        }
+
+        allocation_baseline = memory_used();
+        while (held_count < 128)
+        {
+            held[held_count] = kmalloc(4096);
+            if (!held[held_count])
+                break;
+            held_count++;
+        }
+
+        before = memory_used();
+        extra = kmalloc(4096);
+        if (!extra && memory_used() == before)
+            print("[ OK ] Allocation exhaustion left accounting unchanged\n");
+        else
+        {
+            print("[FAIL] Exhausted allocation request was not rejected\n");
+            if (extra)
+                kfree(extra);
+            passed = 0;
+        }
+
+        for (i = held_count - 1; i >= 0; i--)
+            kfree(held[i]);
+
+        if (memory_used() == allocation_baseline)
+            print("[ OK ] Exhaustion test released all acquired pages\n");
+        else
+        {
+            print("[FAIL] Exhaustion test did not restore accounting\n");
+            passed = 0;
+        }
+
         if (passed)
             print("\nMemory stress test passed.\n");
         else
@@ -700,17 +768,25 @@ void execute_command()
     else if (compare(input, "meminfo"))
     {
         unsigned int used_pages = memory_used_pages();
-        unsigned int total_pages = 1024;
-        unsigned int used_memory = used_pages * 4096;
-        unsigned int total_memory = 4194304;
+        unsigned int total_pages = memory_total_pages();
+        unsigned int page_size = memory_page_size();
+        unsigned int used_memory = memory_used();
+        unsigned int free_memory = memory_free();
+        unsigned int total_memory = memory_total();
 
         print("==============================\n");
         print("       ValaOS MEMORY INFO\n");
         print("==============================\n");
 
-        print("Total Memory : 4194304 bytes\n");
-        print("Page Size    : 4096 bytes\n");
-        print("Total Pages  : 1024\n");
+        print("Total Memory : ");
+        print_number(total_memory);
+        print(" bytes\n");
+        print("Page Size    : ");
+        print_number(page_size);
+        print(" bytes\n");
+        print("Total Pages  : ");
+        print_number(total_pages);
+        print("\n");
 
         print("Used Pages   : ");
         print_number(used_pages);
@@ -721,10 +797,13 @@ void execute_command()
         print(" bytes\n");
 
         print("Free Memory  : ");
-        print_number(total_memory - used_memory);
+        print_number(free_memory);
         print(" bytes\n");
 
-        if (used_pages <= total_pages)
+        if (used_pages <= total_pages &&
+            used_memory == used_pages * page_size &&
+            used_memory <= total_memory &&
+            free_memory == total_memory - used_memory)
             print("Status       : Counter OK\n");
         else
             print("Status       : ERROR\n");

@@ -28,6 +28,37 @@ static struct allocation allocations[MAX_ALLOCATIONS];
 
 static uint32_t allocated_pages = 0;
 
+static uint32_t allocator_lock(void)
+{
+    uint32_t flags;
+
+    __asm__ volatile("pushfl; popl %0; cli" : "=r"(flags) : : "memory");
+    return flags;
+}
+
+static void allocator_unlock(uint32_t flags)
+{
+    __asm__ volatile("pushl %0; popfl" : : "r"(flags) : "memory", "cc");
+}
+
+static int heap_address_to_page(void *address, uint32_t *page)
+{
+    uint32_t heap_start = (uint32_t)&heap[0];
+    uint32_t value = (uint32_t)address;
+    uint32_t offset;
+
+    if (!address || !page || value < heap_start)
+        return 0;
+
+    offset = value - heap_start;
+
+    if (offset >= TOTAL_MEMORY || offset % PAGE_SIZE != 0)
+        return 0;
+
+    *page = offset / PAGE_SIZE;
+    return 1;
+}
+
 static void set_page_used(uint32_t page)
 {
     page_bitmap[page / 8] |=
@@ -94,22 +125,26 @@ static void *allocate_pages(uint32_t pages)
     int start;
     int slot;
     uint32_t i;
+    uint32_t saved_flags;
+    void *result = 0;
+
+    saved_flags = allocator_lock();
 
     if (pages == 0 || pages > TOTAL_PAGES)
-        return 0;
+        goto done;
 
     if (allocated_pages > TOTAL_PAGES - pages)
-        return 0;
+        goto done;
 
     start = find_free_pages(pages);
 
     if (start < 0)
-        return 0;
+        goto done;
 
     slot = find_free_allocation_slot();
 
     if (slot < 0)
-        return 0;
+        goto done;
 
     for (i = 0; i < pages; i++)
         set_page_used((uint32_t)start + i);
@@ -120,35 +155,28 @@ static void *allocate_pages(uint32_t pages)
 
     allocated_pages += pages;
 
-    return &heap[(uint32_t)start * PAGE_SIZE];
+    result = &heap[(uint32_t)start * PAGE_SIZE];
+
+done:
+    allocator_unlock(saved_flags);
+    return result;
 }
 
 static int free_pages(void *address, uint32_t pages,
                       int check_page_count)
 {
-    unsigned char *ptr;
-    uint32_t offset;
     uint32_t page;
     uint32_t i;
     int slot;
+    int result = 0;
+    uint32_t saved_flags;
 
-    if (address == 0 || pages == 0 || pages > TOTAL_PAGES)
-        return 0;
+    saved_flags = allocator_lock();
 
-    ptr = (unsigned char *)address;
-
-    if (ptr < &heap[0] || ptr >= &heap[TOTAL_MEMORY])
-        return 0;
-
-    offset = (uint32_t)(ptr - &heap[0]);
-
-    if (offset % PAGE_SIZE != 0)
-        return 0;
-
-    page = offset / PAGE_SIZE;
-
-    if (page >= TOTAL_PAGES || pages > TOTAL_PAGES - page)
-        return 0;
+    if (pages == 0 || pages > TOTAL_PAGES ||
+        !heap_address_to_page(address, &page) ||
+        page >= TOTAL_PAGES || pages > TOTAL_PAGES - page)
+        goto done;
 
     for (slot = 0; slot < MAX_ALLOCATIONS; slot++)
     {
@@ -159,12 +187,16 @@ static int free_pages(void *address, uint32_t pages,
         {
             if (allocations[slot].page_count >
                 allocated_pages)
-                return 0;
+                goto done;
+
+            if (allocations[slot].page_count == 0 ||
+                allocations[slot].page_count > TOTAL_PAGES - page)
+                goto done;
 
             for (i = 0; i < allocations[slot].page_count; i++)
             {
                 if (!page_is_used(page + i))
-                    return 0;
+                    goto done;
             }
 
             pages = allocations[slot].page_count;
@@ -178,11 +210,14 @@ static int free_pages(void *address, uint32_t pages,
             allocations[slot].page_count = 0;
             allocations[slot].used = 0;
 
-            return 1;
+            result = 1;
+            goto done;
         }
     }
 
-    return 0;
+done:
+    allocator_unlock(saved_flags);
+    return result;
 }
 
 void *page_alloc(uint32_t pages)
@@ -199,38 +234,31 @@ void *kmalloc(uint32_t size)
 {
     uint32_t pages;
 
-    if (size == 0)
+    if (size == 0 || size > TOTAL_MEMORY)
         return 0;
 
-    pages = size / PAGE_SIZE;
-
-    if (size % PAGE_SIZE != 0)
-        pages++;
+    /* Subtract before rounding so the arithmetic cannot wrap at UINT32_MAX. */
+    pages = 1 + ((size - 1) / PAGE_SIZE);
 
     return allocate_pages(pages);
 }
 
 void kfree(void *address)
 {
-    unsigned char *ptr;
-    uint32_t offset;
     uint32_t page;
+    uint32_t saved_flags;
     int slot;
 
     if (address == 0)
         return;
 
-    ptr = (unsigned char *)address;
+    saved_flags = allocator_lock();
 
-    if (ptr < &heap[0] || ptr >= &heap[TOTAL_MEMORY])
+    if (!heap_address_to_page(address, &page))
+    {
+        allocator_unlock(saved_flags);
         return;
-
-    offset = (uint32_t)(ptr - &heap[0]);
-
-    if (offset % PAGE_SIZE != 0)
-        return;
-
-    page = offset / PAGE_SIZE;
+    }
 
     for (slot = 0; slot < MAX_ALLOCATIONS; slot++)
     {
@@ -239,9 +267,12 @@ void kfree(void *address)
         {
             free_pages(address,
                        allocations[slot].page_count, 1);
+            allocator_unlock(saved_flags);
             return;
         }
     }
+
+    allocator_unlock(saved_flags);
 }
 
 uint32_t memory_used(void)
