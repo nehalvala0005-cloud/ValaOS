@@ -51,6 +51,8 @@ extern int task_kill(unsigned int pid);
 extern unsigned int get_timer_ticks();
 extern void vfs_init();
 extern void vfs_list();
+extern int vfs_format(void);
+extern void vfs_info(void);
 
 extern int vfs_list_dir(const char *name);
 
@@ -460,7 +462,7 @@ void suggest_command(const char *command)
         "reboot", "shutdown", "memtest", "memstress", "meminfo",
         "paging", "selftest", "ptest", "dptest", "vmtest",
         "vmaptest", "pwd", "mkdir", "rmdir", "cd", "ls", "programs",
-        "cat", "touch", "write", "rm", "ps", "uptime", "disktest",
+        "cat", "touch", "write", "rm", "fsinfo", "format", "ps", "uptime", "disktest",
         "kill", "tasks", "ticks", "schedule", "pagetest",
         "proctest", "run", "nano", "monitor"};
 
@@ -541,6 +543,8 @@ void execute_command()
         print("cd <dir>\n");
         print("pwd\n");
         print("disktest\n");
+        print("fsinfo\n");
+        print("format (blank dedicated data image only)\n");
     }
     else if (compare(input, "info"))
     {
@@ -1260,6 +1264,14 @@ void execute_command()
     else if (compare(input, "disktest"))
     {
         disk_test();
+    }
+    else if (compare(input, "fsinfo"))
+    {
+        vfs_info();
+    }
+    else if (compare(input, "format"))
+    {
+        vfs_format();
     }
     else if (compare(command, "kill"))
     {

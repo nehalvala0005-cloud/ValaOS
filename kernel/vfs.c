@@ -34,6 +34,8 @@ struct vfs_entry
 
 static struct vfs_entry entries[VFS_MAX_ENTRIES];
 static int current_dir = 0;
+static int vfs_mounted = 0;
+static int vfs_unformatted = 0;
 static uint8_t storage[VFS_DATA_SECTORS * 512];
 static uint8_t legacy_storage[VFS_LEGACY_DATA_SECTORS * 512];
 
@@ -42,6 +44,96 @@ extern void print_number(unsigned int number);
 extern int vfs_current_dir_index(void);
 extern int disk_read_sector(uint32_t lba, uint16_t *buffer);
 extern int disk_write_sector(uint32_t lba, const uint16_t *buffer);
+extern int disk_flush(void);
+extern int disk_is_ready(void);
+extern uint32_t disk_sector_count(void);
+static int vfs_compare(const char *a, const char *b);
+
+static int vfs_valid_name(const char *name)
+{
+    int i;
+
+    if (!name || !name[0])
+        return 0;
+    if (vfs_compare(name, ".") || vfs_compare(name, ".."))
+        return 0;
+
+    for (i = 0; i < VFS_NAME_SIZE; i++)
+    {
+        unsigned char ch = (unsigned char)name[i];
+        if (!ch)
+            return i > 0;
+        if (ch < 0x20 || ch == '/' || ch == '\\')
+            return 0;
+    }
+    return 0;
+}
+
+static int vfs_validate_entries(void)
+{
+    int i;
+    int j;
+
+    if (entries[0].used != 1 || !entries[0].is_dir ||
+        entries[0].parent != -1 || !vfs_compare(entries[0].name, "/"))
+        return 0;
+
+    for (i = 0; i < VFS_MAX_ENTRIES; i++)
+    {
+        int name_terminated = 0;
+        int data_terminated = 0;
+        int parent;
+
+        if (entries[i].used != 0 && entries[i].used != 1)
+            return 0;
+        if (!entries[i].used)
+            continue;
+        if (entries[i].is_dir != 0 && entries[i].is_dir != 1)
+            return 0;
+        for (j = 0; j < VFS_NAME_SIZE; j++)
+            if (!entries[i].name[j]) { name_terminated = 1; break; }
+        for (j = 0; j < VFS_DATA_SIZE; j++)
+            if (!entries[i].data[j]) { data_terminated = 1; break; }
+        if (!name_terminated || !data_terminated)
+            return 0;
+        if (i == 0)
+            continue;
+        if (!vfs_valid_name(entries[i].name))
+            return 0;
+        parent = entries[i].parent;
+        if (parent < 0 || parent >= VFS_MAX_ENTRIES ||
+            !entries[parent].used || !entries[parent].is_dir)
+            return 0;
+        for (j = 0; j < i; j++)
+            if (entries[j].used && entries[j].parent == parent &&
+                vfs_compare(entries[j].name, entries[i].name))
+                return 0;
+
+        /* Parent chains must reach root and cannot contain cycles. */
+        {
+            int depth = 0;
+            int ancestor = parent;
+            while (ancestor != 0 && depth++ < VFS_MAX_ENTRIES)
+            {
+                if (ancestor < 0 || ancestor >= VFS_MAX_ENTRIES ||
+                    !entries[ancestor].used || !entries[ancestor].is_dir)
+                    return 0;
+                ancestor = entries[ancestor].parent;
+            }
+            if (ancestor != 0)
+                return 0;
+        }
+    }
+    return 1;
+}
+
+static int vfs_require_mounted(void)
+{
+    if (vfs_mounted)
+        return 1;
+    print("[ VFS ] Filesystem is not mounted; use 'format' on a blank data image\n");
+    return 0;
+}
 
 static int vfs_compare(const char *a, const char *b)
 {
@@ -184,8 +276,6 @@ static void vfs_deserialize()
         for (j = 0; j < VFS_DATA_SIZE; j++)
             entries[i].data[j] = (char)storage[offset++];
 
-        entries[i].name[VFS_NAME_SIZE - 1] = '\0';
-        entries[i].data[VFS_DATA_SIZE - 1] = '\0';
     }
 }
 
@@ -194,7 +284,10 @@ static int vfs_read_sector(uint32_t lba, uint8_t *buffer)
     uint16_t words[256];
     int i;
 
-    if (!disk_read_sector(lba, words))
+    if (!((lba == VFS_HEADER_SECTOR) ||
+          (lba >= VFS_LEGACY_DATA_START_SECTOR &&
+           lba < VFS_DATA_START_SECTOR + VFS_DATA_SECTORS)) ||
+        !disk_read_sector(lba, words))
         return 0;
 
     for (i = 0; i < 256; i++)
@@ -210,6 +303,11 @@ static int vfs_write_sector(uint32_t lba, const uint8_t *buffer)
 {
     uint16_t words[256];
     int i;
+
+    if (!((lba == VFS_HEADER_SECTOR) ||
+          (lba >= VFS_DATA_START_SECTOR &&
+           lba < VFS_DATA_START_SECTOR + VFS_DATA_SECTORS)))
+        return 0;
 
     for (i = 0; i < 256; i++)
         words[i] = (uint16_t)buffer[i * 2] |
@@ -242,14 +340,28 @@ static int vfs_save()
                 VFS_DATA_START_SECTOR + sector,
                 &storage[sector * 512]))
         {
-            print("[ DEBUG ] VFS data write failed\n");
+            print("[ ERROR ] VFS data write failed at LBA ");
+            print_number(VFS_DATA_START_SECTOR + (unsigned int)sector);
+            print("\n");
             return 0;
         }
     }
 
+    if (!disk_flush())
+    {
+        print("[ ERROR ] VFS data flush failed\n");
+        return 0;
+    }
+
     if (!vfs_write_sector(VFS_HEADER_SECTOR, header))
     {
-        print("[ DEBUG ] VFS header write failed\n");
+        print("[ ERROR ] VFS header write failed at LBA 1\n");
+        return 0;
+    }
+
+    if (!disk_flush())
+    {
+        print("[ ERROR ] VFS header flush failed\n");
         return 0;
     }
 
@@ -300,6 +412,7 @@ static int vfs_load()
     int sector;
     int i;
     int blank = 1;
+    uint8_t blank_check[512];
 
     if (!vfs_read_sector(VFS_HEADER_SECTOR, header))
         return 0;
@@ -314,7 +427,20 @@ static int vfs_load()
     }
 
     if (blank)
+    {
+        /* Treat as unformatted only when every VFS-reserved sector is blank. */
+        for (sector = VFS_LEGACY_DATA_START_SECTOR;
+             sector < VFS_DATA_START_SECTOR + VFS_DATA_SECTORS;
+             sector++)
+        {
+            if (!vfs_read_sector((uint32_t)sector, blank_check))
+                return 0;
+            for (i = 0; i < 512; i++)
+                if (blank_check[i] != 0)
+                    return 0;
+        }
         return 3;
+    }
 
     magic = vfs_get_u32(header, &offset);
     version = vfs_get_u32(header, &offset);
@@ -339,7 +465,7 @@ static int vfs_load()
 
         vfs_deserialize_legacy();
 
-        if (!entries[0].used || !entries[0].is_dir)
+        if (!vfs_validate_entries())
             return 0;
 
         current_dir = 0;
@@ -361,7 +487,7 @@ static int vfs_load()
 
     vfs_deserialize();
 
-    if (!entries[0].used || !entries[0].is_dir)
+    if (!vfs_validate_entries())
         return 0;
 
     current_dir = 0;
@@ -413,6 +539,15 @@ static void vfs_create_default()
         "ValaOS 2.0\nArchitecture: x86\nFilesystem: VFS\n",
         VFS_DATA_SIZE);
 
+    entries[4].used = 1;
+    entries[4].is_dir = 0;
+    entries[4].parent = 0;
+    vfs_copy(entries[4].name, "hello.bin", VFS_NAME_SIZE);
+    vfs_copy(
+        entries[4].data,
+        "B801000000BB55000000CD80B80200000031DBCD80EBFE",
+        VFS_DATA_SIZE);
+
     current_dir = 0;
 }
 
@@ -422,10 +557,19 @@ void vfs_init()
     int used_count = 0;
     int status;
 
+    vfs_mounted = 0;
+    vfs_unformatted = 0;
+    if (!disk_is_ready())
+    {
+        print("[ DISK ] Dedicated ValaOS data disk unavailable\n");
+        return;
+    }
+
     status = vfs_load();
 
     if (status == 1)
     {
+        vfs_mounted = 1;
         for (i = 0; i < VFS_MAX_ENTRIES; i++)
         {
             if (entries[i].used == 1)
@@ -446,6 +590,7 @@ void vfs_init()
 
         if (vfs_save())
         {
+            vfs_mounted = 1;
             print("[ DEBUG ] VFS migration successful\n");
             return;
         }
@@ -456,13 +601,8 @@ void vfs_init()
 
     if (status == 3)
     {
-        print("[ DEBUG ] Blank disk header; creating default VFS\n");
-
-        vfs_create_default();
-
-        if (!vfs_save())
-            print("[ ERROR ] Default VFS save failed\n");
-
+        vfs_unformatted = 1;
+        print("[ VFS ] Blank data image; run 'format' to initialize it\n");
         return;
     }
 
@@ -470,10 +610,80 @@ void vfs_init()
     print("[ ERROR ] Existing disk data was not reset\n");
 }
 
+int vfs_format(void)
+{
+    int status;
+
+    if (!disk_is_ready())
+    {
+        print("[ VFS ] Dedicated data image is not available\n");
+        return 0;
+    }
+    if (vfs_mounted)
+    {
+        print("[ VFS ] Refusing to format a mounted filesystem\n");
+        return 0;
+    }
+    status = vfs_unformatted ? 3 : vfs_load();
+    if (status != 3)
+    {
+        print("[ VFS ] Format allowed only on a blank, unformatted image\n");
+        return 0;
+    }
+
+    /* Consume the blank-image authorization before the first disk write. */
+    vfs_unformatted = 0;
+    vfs_create_default();
+    if (!vfs_save())
+    {
+        print("[ VFS ] Format failed while writing metadata\n");
+        return 0;
+    }
+    if (!vfs_validate_entries())
+    {
+        print("[ VFS ] Formatted metadata failed validation\n");
+        return 0;
+    }
+    vfs_mounted = 1;
+    print("[ VFS ] Formatted ValaOS VFS v2 on dedicated data image\n");
+    return 1;
+}
+
+void vfs_info(void)
+{
+    int i;
+    int used = 0;
+
+    print("ValaOS VFS v2\n");
+    print("Block size: 512 bytes\n");
+    print("Data image: ");
+    print_number(disk_sector_count());
+    print(" sectors (");
+    print_number((disk_sector_count() * 512U) / 1024U);
+    print(" KiB)\n");
+    if (!vfs_mounted)
+    {
+        print("Status: not mounted\n");
+        return;
+    }
+    for (i = 0; i < VFS_MAX_ENTRIES; i++)
+        if (entries[i].used)
+            used++;
+    print("Status: mounted\nDirectory entries: ");
+    print_number((unsigned int)used);
+    print(" / ");
+    print_number(VFS_MAX_ENTRIES);
+    print(" (including root)\nMax file content: ");
+    print_number(VFS_DATA_SIZE - 1);
+    print(" bytes\n");
+}
+
 void vfs_list()
 {
     int i;
 
+    if (!vfs_require_mounted())
+        return;
     print("NAME\n");
 
     for (i = 0; i < VFS_MAX_ENTRIES; i++)
@@ -495,6 +705,8 @@ int vfs_list_dir(const char *name)
     int index;
     int i;
 
+    if (!vfs_require_mounted())
+        return 0;
     index = vfs_find_child(current_dir, name);
 
     if (index < 0 || !entries[index].is_dir)
@@ -525,8 +737,12 @@ int vfs_complete_name(const char *prefix, int parent, int index,
     int j = 0;
     int prefix_len = 0;
 
-    while (prefix[prefix_len])
+    if (!vfs_mounted || !prefix || !name || !is_dir || max_size <= 0)
+        return 0;
+    while (prefix[prefix_len] && prefix_len < VFS_NAME_SIZE)
         prefix_len++;
+    if (prefix_len == VFS_NAME_SIZE)
+        return 0;
 
     for (i = 0; i < VFS_MAX_ENTRIES; i++)
     {
@@ -567,8 +783,12 @@ int vfs_complete_name(const char *prefix, int parent, int index,
 
 int vfs_cat(const char *name)
 {
-    int index = vfs_find_child(current_dir, name);
+    int index;
     int i;
+
+    if (!vfs_require_mounted())
+        return 0;
+    index = vfs_find_child(current_dir, name);
 
     if (index < 0 || entries[index].is_dir)
         return 0;
@@ -588,28 +808,20 @@ int vfs_cat(const char *name)
 int vfs_touch(const char *name)
 {
     int index;
-    print("[ DEBUG ] vfs_touch reached\n");
 
-    if (!name[0] ||
-        vfs_compare(name, ".") ||
-        vfs_compare(name, ".."))
+    if (!vfs_require_mounted() || !vfs_valid_name(name))
         return 0;
 
-    if (vfs_find_child(current_dir, name) >= 0)
-        return 1;
+    index = vfs_find_child(current_dir, name);
+    if (index >= 0)
+        return !entries[index].is_dir;
 
     index = vfs_find_free();
 
     if (index < 0)
     {
-        print("[ DEBUG ] No free VFS entry\n");
         return 0;
     }
-
-    print("[ DEBUG ] Free VFS entry found\n");
-
-    if (index < 0)
-        return 0;
 
     entries[index].used = 1;
     entries[index].is_dir = 0;
@@ -620,24 +832,43 @@ int vfs_touch(const char *name)
 
     if (!vfs_save())
     {
-        print("[ DEBUG ] vfs_save failed\n");
         entries[index].used = 0;
         return 0;
     }
-
-    print("[ DEBUG ] vfs_save succeeded\n");
 
     return 1;
 }
 
 int vfs_write(const char *name, const char *text)
 {
-    int index = vfs_find_child(current_dir, name);
+    int index;
     char old_data[VFS_DATA_SIZE];
     int i;
+    int length = 0;
+    int created = 0;
 
-    if (index < 0 || entries[index].is_dir)
+    if (!vfs_require_mounted() || !vfs_valid_name(name) || !text)
         return 0;
+    while (length < VFS_DATA_SIZE && text[length])
+        length++;
+    if (length >= VFS_DATA_SIZE)
+        return 0;
+    index = vfs_find_child(current_dir, name);
+
+    if (index >= 0 && entries[index].is_dir)
+        return 0;
+    if (index < 0)
+    {
+        index = vfs_find_free();
+        if (index < 0)
+            return 0;
+        created = 1;
+        entries[index].used = 1;
+        entries[index].is_dir = 0;
+        entries[index].parent = current_dir;
+        vfs_copy(entries[index].name, name, VFS_NAME_SIZE);
+        entries[index].data[0] = '\0';
+    }
 
     for (i = 0; i < VFS_DATA_SIZE; i++)
         old_data[i] = entries[index].data[i];
@@ -646,8 +877,11 @@ int vfs_write(const char *name, const char *text)
 
     if (!vfs_save())
     {
-        for (i = 0; i < VFS_DATA_SIZE; i++)
-            entries[index].data[i] = old_data[i];
+        if (created)
+            entries[index].used = 0;
+        else
+            for (i = 0; i < VFS_DATA_SIZE; i++)
+                entries[index].data[i] = old_data[i];
 
         return 0;
     }
@@ -657,8 +891,12 @@ int vfs_write(const char *name, const char *text)
 
 int vfs_remove(const char *name)
 {
-    int index = vfs_find_child(current_dir, name);
+    int index;
     int old_used;
+
+    if (!vfs_require_mounted())
+        return 0;
+    index = vfs_find_child(current_dir, name);
 
     if (index < 0 || entries[index].is_dir)
         return 0;
@@ -681,7 +919,7 @@ int vfs_rmdir(const char *name)
     int i;
     int old_used;
 
-    if (!name[0] ||
+    if (!vfs_require_mounted() || !name || !name[0] ||
         vfs_compare(name, ".") ||
         vfs_compare(name, ".."))
         return 0;
@@ -713,13 +951,12 @@ int vfs_mkdir(const char *name)
 {
     int index;
 
-    if (!name[0] ||
-        vfs_compare(name, ".") ||
-        vfs_compare(name, ".."))
+    if (!vfs_require_mounted() || !vfs_valid_name(name))
         return 0;
 
-    if (vfs_find_child(current_dir, name) >= 0)
-        return 1;
+    index = vfs_find_child(current_dir, name);
+    if (index >= 0)
+        return entries[index].is_dir;
 
     index = vfs_find_free();
 
@@ -745,6 +982,9 @@ int vfs_mkdir(const char *name)
 int vfs_cd(const char *name)
 {
     int index;
+
+    if (!vfs_require_mounted() || !name)
+        return 0;
 
     if (vfs_compare(name, "/"))
     {
@@ -779,6 +1019,8 @@ void vfs_pwd()
     int index = current_dir;
     int i;
 
+    if (!vfs_require_mounted())
+        return;
     if (current_dir == 0)
     {
         print("/\n");
@@ -814,7 +1056,7 @@ int vfs_read_file(const char *name, char *buffer, int max_size)
     int index;
     int i;
 
-    if (max_size <= 0)
+    if (!vfs_require_mounted() || !name || !buffer || max_size <= 0)
         return 0;
 
     index = vfs_find_child(current_dir, name);
@@ -842,6 +1084,8 @@ void vfs_list_programs()
     int found = 0;
     char name[VFS_NAME_SIZE];
 
+    if (!vfs_require_mounted())
+        return;
     print("PROGRAMS\n");
 
     for (i = 0; i < VFS_MAX_ENTRIES; i++)

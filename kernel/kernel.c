@@ -5,6 +5,7 @@
  */
 
 extern void vfs_init(void);
+extern int disk_init(void);
 extern void keyboard_init();
 extern void keyboard_process_pending();
 extern void clear_screen();
@@ -397,6 +398,10 @@ void kernel_main()
 
     print("Welcome to ValaOS!\n\n");
 
+    if (disk_init())
+        print("[ OK ] Dedicated ATA data image detected\n");
+    else
+        print("[ INFO ] No marked ValaOS data image; filesystem is unavailable\n");
     vfs_init();
     keyboard_init();
     print("ValaOS> ");

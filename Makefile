@@ -66,8 +66,12 @@ iso: build/kernel.bin
 	cp boot/grub/grub.cfg build/isodir/boot/grub/grub.cfg
 	grub-mkrescue -o build/ValaOS.iso build/isodir
 
-run: iso
-	qemu-system-i386 -cdrom build/ValaOS.iso -hda build/ValaOS.img -boot d
+data-disk:
+	mkdir -p build
+	python3 tools/create_vfs_image.py build/ValaOS-data.img
+
+run: iso data-disk
+	qemu-system-i386 -cdrom build/ValaOS.iso -drive file=build/ValaOS-data.img,format=raw,if=ide,index=0 -boot d
 
 clean:
 	rm -f build/*.o build/kernel.bin build/ValaOS.iso
