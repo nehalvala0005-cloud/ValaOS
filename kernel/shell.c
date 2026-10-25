@@ -1450,7 +1450,8 @@ void execute_command()
     else if (compare(command, "syscalltest"))
     {
         print("Syscall Reliability Test\n\n");
-        print("[ TEST ] Calling unknown syscall 99\n");
+        print("[ TEST ] Calling unknown syscall 99 with an unmapped argument\n");
+        print("[ TEST ] Verifying valid writes and exit status 37\n");
 
         if (run_syscall_reliability_test())
             print("\n[ OK ] Syscall test process completed\n");

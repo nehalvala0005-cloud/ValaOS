@@ -15,11 +15,14 @@ extern void user_task_exit(unsigned int exit_code);
 #define SYSCALL_EXIT 1
 #define SYSCALL_ERROR -1
 
+/* ABI: EAX is the syscall number and EBX is its scalar argument. SYS_WRITE
+ * emits the low byte; SYS_EXIT records the full unsigned exit value. No
+ * current syscall accepts or dereferences a user pointer. */
 int syscall_handler(unsigned int syscall_number, unsigned int value) {
     char output[2];
 
     if (syscall_number == SYS_WRITE) {
-        output[0] = (char)value;
+        output[0] = (char)(value & 0xFFU);
         output[1] = '\0';
 
         print("\n[ USER ] sys_write: ");

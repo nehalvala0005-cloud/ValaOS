@@ -259,6 +259,46 @@ void user_mode_init()
 
 extern int user_process_start(const char *name);
 extern int task_kill(unsigned int pid);
+extern int get_process_history_count(void);
+extern int get_process_history_info(
+    int index,
+    unsigned int *pid,
+    const char **name,
+    const char **state);
+extern int get_process_history_details(
+    int index,
+    const char **reason,
+    unsigned int *exit_code);
+
+static int syscall_test_exit_status(unsigned int expected_pid,
+                                   unsigned int expected_status)
+{
+    int i;
+    int count = get_process_history_count();
+
+    for (i = 0; i < count; i++)
+    {
+        unsigned int pid;
+        unsigned int exit_code;
+        const char *name;
+        const char *state;
+        const char *reason;
+
+        if (!get_process_history_info(i, &pid, &name, &state))
+            continue;
+        if (pid != expected_pid)
+            continue;
+        if (!get_process_history_details(i, &reason, &exit_code))
+            return 0;
+
+        return exit_code == expected_status &&
+               reason && reason[0] == 'E' && reason[1] == 'X' &&
+               reason[2] == 'I' && reason[3] == 'T' &&
+               reason[4] == '\0';
+    }
+
+    return 0;
+}
 
 int run_syscall_reliability_test(void)
 {
@@ -269,17 +309,21 @@ int run_syscall_reliability_test(void)
         0xCD, 0x80,
 
         0xB8, 0x63, 0x00, 0x00, 0x00,
-        0x31, 0xDB,
+        0xBB, 0x00, 0x00, 0xAD, 0x0B,
         0xCD, 0x80,
         0x3D, 0xFF, 0xFF, 0xFF, 0xFF,
-        0x75, 0x15,
+        0x75, 0x27,
 
         0xB8, 0x01, 0x00, 0x00, 0x00,
         0xBB, 0x42, 0x00, 0x00, 0x00,
         0xCD, 0x80,
 
+        0xBE, 0xEF, 0xBE, 0xAD, 0xDE,
+        0xBF, 0xCE, 0xFA, 0xED, 0xFE,
+        0xBD, 0xAD, 0xDE, 0xC0, 0xDE,
+
         0xB8, 0x02, 0x00, 0x00, 0x00,
-        0x31, 0xDB,
+        0xBB, 0x25, 0x00, 0x00, 0x00,
         0xCD, 0x80,
 
         0xB8, 0x01, 0x00, 0x00, 0x00,
@@ -287,7 +331,7 @@ int run_syscall_reliability_test(void)
         0xCD, 0x80,
 
         0xB8, 0x02, 0x00, 0x00, 0x00,
-        0x31, 0xDB,
+        0xBB, 0x63, 0x00, 0x00, 0x00,
         0xCD, 0x80};
 
     unsigned int i;
@@ -323,7 +367,7 @@ int run_syscall_reliability_test(void)
     }
     enter_user_mode(USER_STACK_BASE + USER_STACK_SIZE);
 
-    return 1;
+    return syscall_test_exit_status((unsigned int)pid, 37);
 }
 
 void kernel_main()
