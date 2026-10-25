@@ -9,7 +9,6 @@ PHDRS
 SECTIONS
 {
     . = 1M;
-
     .text ALIGN(4K) : {
         __kernel_ro_start = .;
         *(.multiboot)
@@ -31,4 +30,6 @@ SECTIONS
         *(.bss)
         *(COMMON)
     } :data
+
+    __kernel_end = .;
 }

@@ -10,6 +10,7 @@ extern void* page_alloc(uint32_t pages);
 extern void page_free(void* address, uint32_t pages);
 extern unsigned char __kernel_ro_start;
 extern unsigned char __kernel_ro_end;
+extern unsigned char __kernel_end;
 
 int set_page_flags(uint32_t *virtual_address, uint32_t flags);
 
@@ -20,6 +21,7 @@ int set_page_flags(uint32_t *virtual_address, uint32_t flags);
 #define PAGE_PRESENT 0x001
 #define PAGE_WRITABLE 0x002
 #define PAGE_USER 0x004
+#define ADDRESS_SPACE_LIMIT (16U * 1024U * 1024U)
 
 #define USER_CODE_VIRTUAL 0x00400000U
 #define USER_STACK_VIRTUAL 0x00800000U
@@ -34,6 +36,28 @@ static uint32_t dynamic_tables[MAX_DYNAMIC_TABLES][1024]
     __attribute__((aligned(4096)));
 
 static int dynamic_table_used[MAX_DYNAMIC_TABLES];
+
+uint32_t get_page_directory(void);
+
+static int kernel_directory_active(void)
+{
+    return get_page_directory() == (uint32_t)&page_directory[0];
+}
+
+static int mapping_address_allowed(uint32_t address)
+{
+    uint32_t reserved_end;
+
+    reserved_end = ((uint32_t)&__kernel_end + PAGE_SIZE - 1) &
+                   0xFFFFF000;
+
+    /* Low memory includes VGA and boot data; the linked image includes all
+     * kernel text, page tables, allocator state, and kernel stacks. */
+    if (address < reserved_end)
+        return 0;
+
+    return (address >> 22) < 16;
+}
 
 static void invalidate_page(uint32_t *virtual_address) {
     __asm__ volatile (
@@ -137,25 +161,38 @@ int map_page_flags(
 ) {
     uint32_t directory_index;
     uint32_t table_index;
+    uint32_t address;
     uint32_t* table;
 
     /* User mappings are owned by a process directory, never the kernel map. */
-    if (flags & PAGE_USER)
+    address = (uint32_t)virtual_address;
+
+    if ((flags & PAGE_USER) ||
+        !kernel_directory_active() ||
+        !mapping_address_allowed(address))
         return 0;
 
-    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
+    if (address % PAGE_SIZE != 0)
         return 0;
 
     if ((uint32_t)physical_address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = (uint32_t)virtual_address >> 22;
-    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
+    directory_index = address >> 22;
+    table_index = (address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
 
-    if (!(page_directory[directory_index] & PAGE_PRESENT)) {
+    if (page_directory[directory_index] & PAGE_PRESENT) {
+        if (page_directory[directory_index] & PAGE_USER)
+            return 0;
+
+        table = (uint32_t *)(page_directory[directory_index] & 0xFFFFF000);
+        if (table[table_index] & PAGE_PRESENT)
+            return 0;
+    }
+    else {
         table = allocate_dynamic_table();
 
         if (!table)
@@ -166,9 +203,6 @@ int map_page_flags(
             PAGE_PRESENT |
             PAGE_WRITABLE;
     }
-
-    if (flags & PAGE_USER)
-        page_directory[directory_index] |= PAGE_USER;
 
     table =
         (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
@@ -199,22 +233,33 @@ int map_page(
 int unmap_page(uint32_t *virtual_address) {
     uint32_t directory_index;
     uint32_t table_index;
+    uint32_t address;
     uint32_t* table;
 
-    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
+    address = (uint32_t)virtual_address;
+
+    if (address % PAGE_SIZE != 0 ||
+        !kernel_directory_active() ||
+        !mapping_address_allowed(address))
         return 0;
 
-    directory_index = (uint32_t)virtual_address >> 22;
-    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
+    directory_index = address >> 22;
+    table_index = (address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
 
     if (!(page_directory[directory_index] & PAGE_PRESENT))
         return 0;
+    if (page_directory[directory_index] & PAGE_USER)
+        return 0;
 
     table =
         (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+
+    if (!(table[table_index] & PAGE_PRESENT) ||
+        (table[table_index] & PAGE_USER))
+        return 0;
 
     table[table_index] = 0;
 
@@ -256,6 +301,9 @@ int virtual_to_physical(
     uint32_t* table;
     uint32_t entry;
 
+    if (!physical_address)
+        return 0;
+
     directory_index = (uint32_t)virtual_address >> 22;
     table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
     offset = (uint32_t)virtual_address & 0xFFF;
@@ -263,7 +311,8 @@ int virtual_to_physical(
     if (directory_index >= 16)
         return 0;
 
-    if (!(page_directory[directory_index] & PAGE_PRESENT))
+    if (!(page_directory[directory_index] & PAGE_PRESENT) ||
+        (page_directory[directory_index] & PAGE_USER))
         return 0;
 
     table =
@@ -291,11 +340,16 @@ uint32_t get_page_flags(uint32_t *virtual_address) {
     if (directory_index >= 16)
         return 0;
 
-    if (!(page_directory[directory_index] & PAGE_PRESENT))
+    if (!(page_directory[directory_index] & PAGE_PRESENT) ||
+        (page_directory[directory_index] & PAGE_USER))
         return 0;
 
     table =
         (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
+
+    if (!(table[table_index] & PAGE_PRESENT) ||
+        (table[table_index] & PAGE_USER))
+        return 0;
 
     return table[table_index] & 0xFFF;
 }
@@ -306,32 +360,39 @@ int set_page_flags(
 ) {
     uint32_t directory_index;
     uint32_t table_index;
+    uint32_t address;
     uint32_t* table;
 
     /* Do not let callers elevate a shared kernel mapping to user access. */
-    if (flags & PAGE_USER)
+    address = (uint32_t)virtual_address;
+
+    if ((flags & PAGE_USER) || !kernel_directory_active())
         return 0;
 
-    if ((uint32_t)virtual_address % PAGE_SIZE != 0)
+    if (address % PAGE_SIZE != 0)
         return 0;
 
-    directory_index = (uint32_t)virtual_address >> 22;
-    table_index = ((uint32_t)virtual_address >> 12) & 0x3FF;
+    directory_index = address >> 22;
+    table_index = (address >> 12) & 0x3FF;
 
     if (directory_index >= 16)
         return 0;
 
-    if (!(page_directory[directory_index] & PAGE_PRESENT))
+    if (!(page_directory[directory_index] & PAGE_PRESENT) ||
+        (page_directory[directory_index] & PAGE_USER))
         return 0;
 
     table =
         (uint32_t*)(page_directory[directory_index] & 0xFFFFF000);
 
-    if (!(table[table_index] & PAGE_PRESENT))
+    if (!(table[table_index] & PAGE_PRESENT) ||
+        (table[table_index] & PAGE_USER))
         return 0;
 
-    if (flags & PAGE_USER)
-        page_directory[directory_index] |= PAGE_USER;
+    if ((address >= (uint32_t)&__kernel_ro_start &&
+         address < (uint32_t)&__kernel_ro_end) &&
+        (flags & PAGE_WRITABLE))
+        return 0;
 
     table[table_index] =
         (table[table_index] & 0xFFFFF000) |
@@ -372,7 +433,9 @@ uint32_t get_page_directory()
 }
 void switch_page_directory(uint32_t cr3)
 {
-    if (!cr3)
+    if (!cr3 ||
+        (cr3 & (PAGE_SIZE - 1)) != 0 ||
+        cr3 >= ADDRESS_SPACE_LIMIT)
         return;
 
     __asm__ volatile (
@@ -398,28 +461,39 @@ uint32_t paging_create_process_directory(
     uint32_t *stack_table;
     uint32_t i;
 
-    if (!code_page || !stack_page ||
+    if (!kernel_directory_active() ||
+        !code_page || !stack_page ||
         (code_page & (PAGE_SIZE - 1)) ||
         (stack_page & (PAGE_SIZE - 1)) ||
+        code_page >= ADDRESS_SPACE_LIMIT ||
+        stack_page >= ADDRESS_SPACE_LIMIT ||
         code_page == stack_page ||
         !(page_directory[1] & PAGE_PRESENT) ||
         !(page_directory[2] & PAGE_PRESENT))
         return 0;
 
     directory = (uint32_t *)page_alloc(1);
-    if (!directory)
+    if (!directory || (uint32_t)directory >= ADDRESS_SPACE_LIMIT)
+    {
+        if (directory)
+            page_free(directory, 1);
         return 0;
+    }
 
     code_table = (uint32_t *)page_alloc(1);
-    if (!code_table)
+    if (!code_table || (uint32_t)code_table >= ADDRESS_SPACE_LIMIT)
     {
+        if (code_table)
+            page_free(code_table, 1);
         page_free(directory, 1);
         return 0;
     }
 
     stack_table = (uint32_t *)page_alloc(1);
-    if (!stack_table)
+    if (!stack_table || (uint32_t)stack_table >= ADDRESS_SPACE_LIMIT)
     {
+        if (stack_table)
+            page_free(stack_table, 1);
         page_free(code_table, 1);
         page_free(directory, 1);
         return 0;

@@ -756,7 +756,7 @@ void execute_command()
     }
     else if (compare(input, "ptest"))
     {
-        unsigned int virtual_address = 0x00E00000;
+        unsigned int virtual_address = 0x01000000;
         unsigned int physical_address = 0x00300000;
 
         print("Page Mapping Test\n\n");
@@ -875,6 +875,11 @@ void execute_command()
         else
             print("[FAIL] Page mapping failed\n");
 
+        if (!map_page(virtual_address, physical_address))
+            print("[ OK ] Existing mapping was not replaced\n");
+        else
+            print("[FAIL] Existing mapping was replaced\n");
+
         if (is_page_mapped(virtual_address))
             print("[ OK ] Virtual page is mapped\n");
         else
@@ -911,6 +916,22 @@ void execute_command()
             print("[ OK ] Mapping removed\n");
         else
             print("[FAIL] Mapping still exists\n");
+
+        if (!unmap_page(virtual_address))
+            print("[ OK ] Unmapped page was rejected\n");
+        else
+            print("[FAIL] Unmapped page was accepted\n");
+
+        if (!map_page(0x00100000, 0x00100000) &&
+            !unmap_page(0x00100000))
+            print("[ OK ] Kernel image mapping is protected\n");
+        else
+            print("[FAIL] Kernel image mapping changed\n");
+
+        if (!set_page_flags(0x00100000, 0x003))
+            print("[ OK ] Kernel text cannot be made writable\n");
+        else
+            print("[FAIL] Kernel text was made writable\n");
 
         print("\nVirtual memory mapping test passed.\n");
     }
